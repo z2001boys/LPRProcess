@@ -1,0 +1,13 @@
+
+
+model_vgg16_conv = VGG16(weights='imagenet', include_top=False)
+model_vgg16_conv.summary()
+
+input = Input(shape=(100,100,1),name = 'image_input')
+output_vgg16_conv = model_vgg16_conv(input)
+
+
+x = Flatten(name='flatten')(output_vgg16_conv)
+x = Dense(4096, activation='relu', name='fc1')(x)
+x = Dense(4096, activation='relu', name='fc2')(x)
+x = Dense(8, activation='softmax', name='predictions')(x)

@@ -1,0 +1,15 @@
+
+Conv2D(32, (3, 3), activation='relu', input_shape=(100, 100, 1))
+
+MaxPooling2D(pool_size=(2, 2))
+Dropout(0.25)
+
+Conv2D(64, (3, 3), activation='relu')
+
+MaxPooling2D(pool_size=(2, 2))
+Dropout(0.25)
+
+Flatten()
+Dense(128, activation='relu')
+Dropout(0.4)
+Dense(34, activation='softmax')
