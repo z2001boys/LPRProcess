@@ -1,12 +1,15 @@
+import numpy as np
+
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense, Flatten, Activation, Dropout, Reshape, Lambda
 from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, SeparableConv2D, Cropping2D 
-from tensorflow.keras.layers import MaxPooling2D, GlobalAveragePooling2D, AveragePooling2D, ZeroPadding2D
+from tensorflow.keras.layers import MaxPooling2D, GlobalAveragePooling2D, GlobalMaxPooling2D, AveragePooling2D, ZeroPadding2D
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import add, concatenate, multiply
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.layers import LeakyReLU, ReLU
+
 
 # ResNet Module
 def bn_relu(input):
@@ -420,7 +423,7 @@ def inception_resnet_a_v2(scale_residual = True):
         output = add([input, ar])
         output = BatchNormalization()(output)
         output = Activation("relu")(output)
-
+    
         return output
     return f
 
@@ -437,7 +440,7 @@ def inception_resnet_b_v2(scale_residual = True):
         if scale_residual: br = Lambda(lambda b: b * 0.1)(br)
 
         output = add([input, br])
-        output = BatchNormalization(axis = -1)(output)
+        output = BatchNormalization()(output)
         output = Activation("relu")(output)
 
         return output
@@ -1029,4 +1032,198 @@ def NasNet(input_shape=None, penultimate_filters=4032, nb_blocks=6, stem_filters
                    name='predictions')(x)
 
     model = Model(inputs=input, outputs=output)
+    return model
+
+# ShuffleNet v1
+def channel_shuffle(x, groups):
+    height, width, in_channels = x.shape.as_list()[1:]
+    channels_per_group = in_channels // groups
+
+    x = K.reshape(x, [-1, height, width, groups, channels_per_group])
+    x = K.permute_dimensions(x, (0, 1, 2, 4, 3))
+    x = K.reshape(x, [-1, height, width, in_channels])
+    return x
+
+def group_conv(x, in_channels, out_channels, groups, kernel=1, stride=1, name=''):
+    if groups == 1:
+        return Conv2D(filters=out_channels, kernel_size=kernel, padding='same',
+                      use_bias=False, strides=stride, name=name)(x)
+
+    ig = in_channels // groups
+    group_list = []
+
+    assert out_channels % groups == 0
+
+    for i in range(groups):
+        offset = i * ig
+        group = Lambda(lambda z: z[:, :, :, offset: offset + ig], name='%s/g%d_slice' % (name, i))(x)
+        group_list.append(Conv2D(int(0.5 + out_channels / groups), kernel_size=kernel, strides=stride, use_bias=False, padding='same', name='%s_/g%d' % (name, i))(group))
+    return concatenate(group_list, axis=-1, name='%s/concat' % name)
+
+def shuffle_unit(inputs, in_channels, out_channels, groups, bottleneck_ratio, strides=2, stage=1, block=1):
+    if K.image_data_format() == 'channels_last':
+        bn_axis = -1
+    else:
+        bn_axis = 1
+
+    prefix = 'stage%d/block%d' % (stage, block)
+
+    bottleneck_channels = int(out_channels * bottleneck_ratio)
+    groups = (1 if stage == 2 and block == 1 else groups)
+
+    x = group_conv(inputs, in_channels, out_channels=bottleneck_channels, groups=(1 if stage == 2 and block == 1 else groups), name='%s/1x1_gconv_1' % prefix)
+    x = BatchNormalization(axis=bn_axis, name='%s/bn_gconv_1' % prefix)(x)
+    x = Activation('relu', name='%s/relu_gconv_1' % prefix)(x)
+
+    x = Lambda(channel_shuffle, arguments={'groups': groups}, name='%s/channel_shuffle' % prefix)(x)
+    x = DepthwiseConv2D(kernel_size=(3, 3), padding="same", use_bias=False, strides=strides, name='%s/1x1_dwconv_1' % prefix)(x)
+    x = BatchNormalization(axis=bn_axis, name='%s/bn_dwconv_1' % prefix)(x)
+
+    x = group_conv(x, bottleneck_channels, out_channels=out_channels if strides == 1 else out_channels - in_channels, groups=groups, name='%s/1x1_gconv_2' % prefix)
+    x = BatchNormalization(axis=bn_axis, name='%s/bn_gconv_2' % prefix)(x)
+
+    if strides < 2:
+        ret = add([x, inputs], name='%s/add' % prefix)
+    else:
+        avg = AveragePooling2D(pool_size=3, strides=2, padding='same', name='%s/avg_pool' % prefix)(inputs)
+        ret = concatenate([x, avg], bn_axis, name='%s/concat' % prefix)
+
+    ret = Activation('relu', name='%s/relu_out' % prefix)(ret)
+    return ret
+
+def shuffle_block(x, channel_map, bottleneck_ratio, repeat=1, groups=1, stage=1):
+    x = shuffle_unit(x, in_channels=channel_map[stage - 2], out_channels=channel_map[stage - 1], strides=2,
+                     groups=groups, bottleneck_ratio=bottleneck_ratio, stage=stage, block=1)
+
+    for i in range(1, repeat + 1):
+        x = shuffle_unit(x, in_channels=channel_map[stage - 1], out_channels=channel_map[stage - 1], strides=1,
+                         groups=groups, bottleneck_ratio=bottleneck_ratio, stage=stage, block=(i + 1))
+    return x
+
+def ShuffleNet(scale_factor=1.0, pooling='avg', input_shape=(100, 100, 1), groups=3, num_shuffle_units=[3, 7, 3], bottleneck_ratio=0.25, classes=34):
+    name = "ShuffleNet_%.2gX_g%d_br_%.2g_%s" % (scale_factor, groups, bottleneck_ratio, "".join([str(x) for x in num_shuffle_units]))
+    out_dim_stage_two = {1: 144, 2: 200, 3: 240, 4: 272, 8: 384}
+
+    exp = np.insert(np.arange(0, len(num_shuffle_units), dtype=np.float32), 0, 0)
+    out_channels_in_stage = 2 ** exp
+    out_channels_in_stage *= out_dim_stage_two[groups]  # calculate output channels for each stage
+    out_channels_in_stage[0] = 24  # first stage has always 24 output channels
+    out_channels_in_stage *= scale_factor
+    out_channels_in_stage = out_channels_in_stage.astype(int)
+
+    img_input = Input(shape=input_shape)
+
+    x = Conv2D(filters=out_channels_in_stage[0], kernel_size=(3, 3), padding='same',
+                   use_bias=False, strides=(2, 2), activation="relu", name="conv1")(img_input)
+    x = MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding='same', name="maxpool1")(x)
+
+    for stage in range(0, len(num_shuffle_units)):
+        repeat = num_shuffle_units[stage]
+        x = shuffle_block(x, out_channels_in_stage, repeat=repeat,
+                          bottleneck_ratio=bottleneck_ratio,
+                          groups=groups, stage=stage + 2)
+
+    if pooling == 'avg':
+        x = GlobalAveragePooling2D(name="global_pool")(x)
+    elif pooling == 'max':
+        x = GlobalMaxPooling2D(name="global_pool")(x)
+
+    x = Dense(classes, name="fc")(x)
+    x = Activation('softmax', name='softmax')(x)
+
+    model = Model(inputs=img_input, outputs=x, name=name)
+
+    return model
+
+# ShuffleNet v2
+def channel_split_v2(x, name=''):
+    in_channles = x.shape.as_list()[-1]
+    ip = in_channles // 2
+    c_hat = Lambda(lambda z: z[:, :, :, 0:ip], name='%s/sp%d_slice' % (name, 0))(x)
+    c = Lambda(lambda z: z[:, :, :, ip:], name='%s/sp%d_slice' % (name, 1))(x)
+    return c_hat, c
+
+def channel_shuffle_v2(x):
+    height, width, channels = x.shape.as_list()[1:]
+    channels_per_split = channels // 2
+    x = K.reshape(x, [-1, height, width, 2, channels_per_split])
+    x = K.permute_dimensions(x, (0,1,2,4,3))
+    x = K.reshape(x, [-1, height, width, channels])
+    return x
+
+def shuffle_unit_v2(inputs, out_channels, bottleneck_ratio,strides=2,stage=1,block=1):
+    if K.image_data_format() == 'channels_last':
+        bn_axis = -1
+    else:
+        bn_axis = 1
+
+    prefix = 'stage{}/block{}'.format(stage, block)
+    bottleneck_channels = int(out_channels * bottleneck_ratio)
+    if strides < 2:
+        c_hat, c = channel_split_v2(inputs, '%s/spl' % prefix)
+        inputs = c
+
+    x = Conv2D(bottleneck_channels, kernel_size=(1,1), strides=1, padding='same', name='%s/1x1conv_1' % prefix)(inputs)
+    x = BatchNormalization(axis=bn_axis, name='%s/bn_1x1conv_1' % prefix)(x)
+    x = Activation('relu', name='%s/relu_1x1conv_1' % prefix)(x)
+    x = DepthwiseConv2D(kernel_size=(3,3), strides=strides, padding='same', use_bias=False,name='%s/3x3dwconv' % prefix)(x)
+    x = BatchNormalization(axis=bn_axis, name='%s/bn_3x3dwconv' % prefix)(x)
+    x = Conv2D(bottleneck_channels, kernel_size=1,strides=1,padding='same', name='%s/1x1conv_2' % prefix)(x)
+    x = BatchNormalization(axis=bn_axis, name='%s/bn_1x1conv_2' % prefix)(x)
+    x = Activation('relu', name='%s/relu_1x1conv_2' % prefix)(x)
+
+    if strides < 2:
+        ret = concatenate([x, c_hat], axis=bn_axis, name='%s/concat_1' % prefix)
+    else:
+        s2 = DepthwiseConv2D(kernel_size=(3,3), strides=2, padding='same', use_bias=False,name='%s/3x3dwconv_2' % prefix)(inputs)
+        s2 = BatchNormalization(axis=bn_axis, name='%s/bn_3x3dwconv_2' % prefix)(s2)
+        s2 = Conv2D(bottleneck_channels, kernel_size=1,strides=1,padding='same', name='%s/1x1_conv_3' % prefix)(s2)
+        s2 = BatchNormalization(axis=bn_axis, name='%s/bn_1x1conv_3' % prefix)(s2)
+        s2 = Activation('relu', name='%s/relu_1x1conv_3'% prefix)(s2)
+        ret = concatenate([x, s2], axis=bn_axis, name='%s/concat_2' % prefix)
+
+    ret = Lambda(channel_shuffle_v2, name='%s/channel_shuffle' % prefix)(ret)
+    return ret
+
+def shuffle_block_v2(x, channel_map, bottleneck_ratio, repeat=1, stage=1):
+    x = shuffle_unit_v2(x, out_channels=channel_map[stage-1], strides=2,bottleneck_ratio=bottleneck_ratio,stage=stage,block=1)
+
+    for i in range(1, repeat+1):
+        x = shuffle_unit_v2(x, out_channels=channel_map[stage-1],strides=1, bottleneck_ratio=bottleneck_ratio,stage=stage, block=(1+i))    
+    return x
+
+def ShuffleNetv2(scale_factor=1.0, pooling='max', input_shape=(100,100,1), num_shuffle_units=[3,7,3], bottleneck_ratio=1, classes=34):
+    name = 'ShuffleNetV2_{}_{}_{}'.format(scale_factor, bottleneck_ratio, "".join([str(x) for x in num_shuffle_units]))
+    out_dim_stage_two = {0.5:48, 1:116, 1.5:176, 2:244}
+
+    exp = np.insert(np.arange(len(num_shuffle_units), dtype=np.float32), 0, 0)  # [0., 0., 1., 2.]
+    out_channels_in_stage = 2**exp
+    out_channels_in_stage *= out_dim_stage_two[bottleneck_ratio]
+    out_channels_in_stage[0] = 24
+    out_channels_in_stage *= scale_factor
+    out_channels_in_stage = out_channels_in_stage.astype(int)
+
+    img_input = Input(shape=input_shape)
+    x = Conv2D(filters=out_channels_in_stage[0], kernel_size=(3, 3), padding='same', use_bias=False, strides=(2, 2), activation='relu', name='conv1')(img_input)
+    x = MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding='same', name='maxpool1')(x)
+    for stage in range(len(num_shuffle_units)):
+        repeat = num_shuffle_units[stage]
+        x = shuffle_block_v2(x, out_channels_in_stage, repeat=repeat, bottleneck_ratio=bottleneck_ratio, stage=stage + 2)
+
+    if bottleneck_ratio < 2:
+        k = 1024
+    else:
+        k = 2048
+
+    x = Conv2D(k, kernel_size=1, padding='same', strides=1, name='1x1conv5_out', activation='relu')(x)
+
+    if pooling == 'avg':
+        x = GlobalAveragePooling2D(name='global_avg_pool')(x)
+    elif pooling == 'max':
+        x = GlobalMaxPooling2D(name='global_max_pool')(x)
+
+    x = Dense(classes, name='fc')(x)
+    x = Activation('softmax', name='softmax')(x)
+
+    model = Model(inputs=img_input, outputs=x, name=name)
     return model
