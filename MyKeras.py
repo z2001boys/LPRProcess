@@ -1,8 +1,4 @@
 import tensorflow as tf
-from tensorflow.keras.datasets import mnist
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Flatten, Reshape
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, AveragePooling2D, SeparableConv2D
 from tensorflow.keras import backend as K
 import LabelImage
 import ImageInfoClass as IF
@@ -11,19 +7,17 @@ import numpy as np
 import cv2
 import CommonMath
 import CommonStruct
+import ILBPLayer
 import gc
-
+import os
+from matplotlib import pyplot as plt
 '''keras import'''
-from tensorflow.keras.models import Model, Sequential
-from tensorflow.keras.layers import Input, Dense, Dropout, Flatten, Activation, ReLU
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, AveragePooling2D, GlobalAveragePooling2D
-from tensorflow.keras.layers import add, concatenate
-from tensorflow.keras.layers import BatchNormalization
-from tensorflow.keras.layers import ZeroPadding2D 
-from tensorflow.keras.regularizers import l2
+from tensorflow.keras.models import Sequential,Model
+from tensorflow.keras.layers import Dense, Dropout, Flatten,Input,AveragePooling2D,concatenate
+from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.optimizers import SGD
+from ILBPLayer import MyLayer
 
-from CNN_Module import conv_bn_relu, basic_block, bottleneck, bn_relu, inception_block_v1,darknet_bottleneck, conv_block, dense_block, transition_block, mn_conv_block, depthwise_conv_block, inverted_res_block, make_divisible, correct_pad, stem_v4, inception_a_v4, inception_b_v4, inception_c_v4, reduction_a_v4, reduction_b_v4, stem_inception_resnet_v1, inception_resnet_a_v1, inception_resnet_b_v1, inception_resnet_c_v1, reduction_resnet_b_v1, stem_inception_resnet_v2, inception_resnet_a_v2, inception_resnet_b_v2, inception_resnet_c_v2, reduction_resnet_a, reduction_resnet_b_v2, grouped_conv_block, xt_bottleneck_block, grouped_conv_block_v2, xt_bottleneck_block_v2, separable_conv_block, adjust_block, normal_cell, reduction_cell, NasNet
 
 class KerasObj:
     def __init__(self, _ImageSize=[100, 100], _ImageChannel=1, _ImageFlatten=False):
@@ -34,7 +28,7 @@ class KerasObj:
         # define input data
         self.ImageInfo = IF.ImageInfoClass()
         self.ImageInfo.Size = _ImageSize
-        self.ImageInfo.Channel = _ImageChannel 
+        self.ImageInfo.Channel = _ImageChannel
         self.ImageInfo.NeedFlatten = _ImageFlatten
 
     def NewSeq(self):
@@ -55,7 +49,7 @@ class KerasObj:
     def LoadMdl(self, _loadPath, _modelName):
         _loadPath = LabelImage.PathCheck(_loadPath)
         self.KerasMdl = tf.keras.models.load_model(
-            _loadPath+_modelName)
+            _loadPath+_modelName+"_mdl.h5")
 
     # load weight(with h5py, please install h5py with pip)
     def LoadWeight(self, _loadPath, _weightName):
@@ -76,34 +70,39 @@ class KerasObj:
         _savePath = LabelImage.PathCheck(_savePath)
         self.KerasMdl.save_weights(_savePath+_weightName+"_weight.h5")
 
-    def Train(self, imgObj, batch_size=-1, epochs=-1, verbose=-1, callbacks=None):
-        print("Prepare data...")
-        imageData = imgObj.GetImageData(self.ImageInfo, Dim=4)
-        label, _ = imgObj.ToIntLable(FinalTarget = "ArrayExtend")
+    def Train(self, imgObj, SelectMethod='all',rdnSize = 1000 ,
+        global_epoche = 1,
+        PreProcess = '',
+        batch_size=-1, epochs=-1, verbose=-1):
 
-        #print("Start Training")
-        #print("==Total layer : ", self.LayerNum)
+        for i in range(global_epoche):
+            print("Prepare data...-")
+            imageData,label = imgObj.RadomLoad(self.ImageInfo,PickSize=rdnSize, Dim=4 , PreProcess = PreProcess)
+                
 
-        # build train command
-        '''
-        targetStr = 'self.KerasMdl.fit(imageData, label'
-        if(batch_size != -1):
-            targetStr = targetStr + ',batch_size='+str(batch_size)
-        if(epochs != -1):
-            targetStr = targetStr + ',epochs='+str(epochs)
-        if(verbose != -1):
-            targetStr = targetStr + ',verbose='+str(verbose)
+            print("Start Training")
+            print("==Total layer : ", self.LayerNum)
+            print("==Global Epoche : ", i)
 
-        targetStr = targetStr+')'
+            # build train command
+            targetStr = 'self.KerasMdl.fit(imageData, label'
+            if(batch_size != -1):
+                targetStr = targetStr + ',batch_size='+str(batch_size)
+            if(epochs != -1):
+                targetStr = targetStr + ',epochs='+str(epochs)
+            if(verbose != -1):
+                targetStr = targetStr + ',verbose='+str(verbose)
 
-        eval(targetStr)
-        '''
-        # v = self.KerasMdl.predict(imageData)
-        targetStr = 'self.KerasMdl.fit(imageData, label, batch_size=batch_size, epochs=epochs, verbose=verbose, callbacks=callbacks)'
-        eval(targetStr)
+            targetStr = targetStr+')'
+
+            eval(targetStr)
+            # v = self.KerasMdl.predict(imageData)
 
     def TrainByGener(self, trainPath,
                      IncludeSet=[],
+                     TrimName = '',
+                     LoadSize = 50, #每一次讀入的子集影像數量
+                     GenerSize = 3000,
                      GlobalEpochs=10,
                      GlobalBatchSize=3000,
                      batch_size=-1, epochs=-1, verbose=-1):
@@ -111,18 +110,30 @@ class KerasObj:
             raise Exception('Data Set cant be empty')
 
         imgObj = LabelImage.DataObj()
-        labels, imgPaths = imgObj.CreateAccessCache(trainPath, IncludeSet)
-        baseEpoch = 10
+        if os.path.isfile( trainPath )==False:
+            labels, imgPaths = imgObj.CreateAccessCache(trainPath, IncludeSet)
+        else:
+            labels, imgPaths = imgObj.CreateAccessCacheByFile(trainPath, IncludeSet,TrimName=TrimName)
 
-        for gi in range(GlobalEpochs):
+        baseEpoch = GenerSize
+
+        #prepare each learning size
+        eachSize = []
+        for i in range(0,len(IncludeSet)):
+            eachSize.append(LoadSize)
+
+        for i in range(GlobalEpochs):
             imgObj.GenImage(
-                imgPaths, labels, IncludeSet, self.ImageInfo, eachSize=(400, 600))
+                imgPaths, labels, IncludeSet, self.ImageInfo, eachSize=eachSize)
             imgObj.LoadFromList(
                 'D:/tempLabel.txt', (self.ImageInfo.Size[0], self.ImageInfo.Size[1]), IncludeSet)
 
             # get learning data
             x_train = imgObj.GetImageData(self.ImageInfo, Dim=4)
-            y_train, _ = imgObj.ToIntLable(ArrayExtend=True)
+            y_train, _ = imgObj.ToIntLable(FinalTarget="ArrayExtend")
+
+
+            print("Globle Epoche run:",i)
 
             datagen = tf.keras.preprocessing.image.ImageDataGenerator(
                 width_shift_range=0.1,
@@ -134,7 +145,7 @@ class KerasObj:
             datagen.fit(x_train)
 
             self.KerasMdl.fit_generator(datagen.flow(x_train, y_train, batch_size=64),
-                                        steps_per_epoch=baseEpoch, epochs=epochs)
+                                        steps_per_epoch=2000, epochs=epochs)
 
             # prepare for next round
             baseEpoch = baseEpoch+5
@@ -145,13 +156,13 @@ class KerasObj:
         return 1
 
     def Compile(self, _optimize, _loss, _metrics):
-        self.KerasMdl.compile(optimizer=_optimize,
-                              loss=_loss,
-                              metrics=_metrics)
+        self.KerasMdl.compile(optimizer='rmsprop',
+                              loss='binary_crossentropy',
+                              metrics=['accuracy'])
 
     def FindInImage(self, img, score, labels):
         imgPatch, BoxSize, boxR, boxC = CIP.CreatePatch(
-            img, Stride=(10, 10), TargetSize=(64, 64))
+            img, Stride=(80, 80), TargetSize=(200, 200))
         box = []
         MatchTable = self.KerasMdl.predict(imgPatch)
         for i in range(MatchTable.shape[1]):
@@ -217,118 +228,22 @@ class KerasObj:
         return self.KerasMdl.predict(imgs)
 
     def LoadModelFromTxt(self, txtFile):
-        '''
         with open(txtFile, 'r') as f:
             lines = f.readlines()
-
-        #prevStr = 'self.KerasMdl.add('
+        
 
         for l in lines:
             try:
                 l = l.strip('\n')
-                if l != '':
-                    #target = prevStr+l+')'
-                    #eval(target)
-                    exec(l)
+                if l != '' and l[0]!='#':
+                    target = l
+                    exec(target)
                     self.LayerNum = self.LayerNum+1
             except OSError as err:
                 print("Error on adding ", str(err))
                 pass
         
-        exec('self.KerasMdl = model')
-        
-        '''
-        with open(txtFile, 'r') as f:
-            lines = f.read()
-        exec(lines)
-        exec('self.KerasMdl = model')        
-        
-    # ResNet Module
-    '''
-    def bn_relu(self, input):
-        bn = BatchNormalization(axis=3)(input)
-        return Activation("relu")(bn)
+        exec('self.KerasMdl = model') 
 
-    def conv_bn_relu(self, **conv_params):
-        filters = conv_params["filters"]
-        kernel_size = conv_params["kernel_size"]
-        strides = conv_params.setdefault("strides", (1, 1))
-        kernel_initializer = conv_params.setdefault("kernel_initializer", "he_normal")
-        padding = conv_params.setdefault("padding", "same")
-        kernel_regularizer = conv_params.setdefault("kernel_regularizer", l2(1e-4))
-
-        def f(input):
-            conv = Conv2D(filters=filters, kernel_size=kernel_size,
-                          strides=strides, padding=padding,
-                          kernel_initializer=kernel_initializer,
-                          kernel_regularizer=kernel_regularizer)(input)
-            return self.bn_relu(conv)
-        return f
-
-    def bn_relu_conv(self, **conv_params):
-        filters = conv_params["filters"]
-        kernel_size = conv_params["kernel_size"]
-        strides = conv_params.setdefault("strides", (1, 1))
-        kernel_initializer = conv_params.setdefault("kernel_initializer", "he_normal")
-        padding = conv_params.setdefault("padding", "same")
-        kernel_regularizer = conv_params.setdefault("kernel_regularizer", l2(1.e-4))
-
-        def f(input):
-            activation = self.bn_relu(input)
-            return Conv2D(filters=filters, kernel_size=kernel_size,
-                          strides=strides, padding=padding,
-                          kernel_initializer=kernel_initializer,
-                          kernel_regularizer=kernel_regularizer)(activation)
-        return f
-
-    def shortcut(self, input, residual):
-        input_shape = K.int_shape(input)
-        residual_shape = K.int_shape(residual)
-        stride_width = int(round(input_shape[1] / residual_shape[1]))
-        stride_height = int(round(input_shape[2] / residual_shape[2]))
-        equal_channels = input_shape[3] == residual_shape[3]
-
-        shortcut = input
-
-        if stride_width > 1 or stride_height > 1 or not equal_channels:
-            shortcut = Conv2D(filters=residual_shape[3],
-                              kernel_size=(1, 1),
-                              strides=(stride_width, stride_height),
-                              padding="valid",
-                              kernel_initializer="he_normal",
-                              kernel_regularizer=l2(1e-4))(input)
-        return add([shortcut, residual])
-
-    def basic_block(self, filters, init_strides=(1, 1), first_layer_first_block=False):
-        def f(input):
-            if first_layer_first_block:
-                conv1 = Conv2D(filters=filters, kernel_size=(3, 3),
-                               strides=init_strides, padding="same",
-                               kernel_initializer="he_normal",
-                               kernel_regularizer=l1(1e-4))(input)
-            else:
-                conv1 = self.bn_relu_conv(filters=filters, kernel_size=(3, 3),
-                                     strides=init_strides)(input)
-
-            residual = self.bn_relu_conv(filters=filters, kernel_size=(3, 3))(conv1)
-            return self.shortcut(input, residual)
-
-        return f
-
-    def bottleneck(self, filters, init_strides=(1, 1), first_layer_first_block=False):
-        def f(input):
-            if first_layer_first_block:
-                conv_1_1 = Conv2D(filters=filters, kernel_size=(1, 1),
-                                  strides=init_strides, padding="same",
-                                  kernel_initializer="he_normal",
-                                  kernel_regularizer=l2(1e-4))(input)
-            else:
-                conv_1_1 = self.bn_relu_conv(filters=filters, kernel_size=(1, 1),
-                                        strides=init_strides)(input)
-
-            conv_3_3 = self.bn_relu_conv(filters=filters, kernel_size=(3, 3))(conv_1_1)
-            residual = self.bn_relu_conv(filters=filters*4, kernel_size=(1, 1))(conv_3_3)
-            return self.shortcut(input, residual)
-
-        return f
-    '''
+    def AssignModel(self,mdl):
+        self.KerasMdl = mdl
