@@ -10,12 +10,13 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.optimizers import SGD
+from Models import MobileNet
 
-'''from tensorflow.keras.backend import set_session
+from tensorflow.keras.backend import set_session
 config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.8
 config.gpu_options.visible_device_list = "0"
-set_session(tf.Session(config=config))'''
+set_session(tf.Session(config=config))
 
 
 # create object
@@ -27,11 +28,12 @@ kerasObj.ImageInfo.Size = [100, 100]
 kerasObj.ImageInfo.Channel = 1
 
 # get labels
-SortedClass = LabelMgr.GetAllLabel()
+SortedClass = LabelMgr.DigitalOnly()
 
 # 設定模組
 kerasObj.NewSeq()
-kerasObj.LoadModelFromTxt('Models\\BasicModel.txt')    
+kerasObj.AssignModel( MobileNet.GetMdl(len(SortedClass)) )
+#kerasObj.LoadModelFromTxt('Models\\BasicModel.txt')  
 
 sgd = SGD(lr=0.05, decay=1e-6, momentum=0.9, nesterov=True)
 kerasObj.Compile(_optimize='rmsprop',
@@ -40,7 +42,7 @@ kerasObj.Compile(_optimize='rmsprop',
 
 # Load image
 if(os.name == 'nt'):
-    imgObj.LoadList("DatasetList/TrainingList.txt",
+    imgObj.LoadList("D:\\DataSet\\SHVT\\trainList.txt",
                         SortedClass=SortedClass,
                         TrimName="/home/itlab/")
 else:
@@ -53,8 +55,8 @@ kerasObj.Train(imgObj,
                SelectMethod='rdn',
                batch_size=128,
                epochs=10,
-               rdnSize=1000,
+               rdnSize=3000,
                global_epoche=10,
+               PreProcess='ILBPNet',
                verbose=1)
-
-kerasObj.SaveAll("TrainResult/", "chars74k_font")
+#kerasObj.SaveAll("TrainResult/", "IIIT5K_test")

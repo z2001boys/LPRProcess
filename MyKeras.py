@@ -70,10 +70,14 @@ class KerasObj:
         _savePath = LabelImage.PathCheck(_savePath)
         self.KerasMdl.save_weights(_savePath+_weightName+"_weight.h5")
 
-    def Train(self, imgObj, SelectMethod='all',rdnSize = 1000 ,
+    def Train(self, imgObj, SelectMethod='all',rdnSize = -1 ,
         global_epoche = 1,
         PreProcess = '',
         batch_size=-1, epochs=-1, verbose=-1):
+
+        #若RDN==-1則使用全部的影像
+        if rdnSize == -1:
+            rdnSize = imgObj.GetListSize()
 
         for i in range(global_epoche):
             print("Prepare data...-")
@@ -96,7 +100,9 @@ class KerasObj:
             targetStr = targetStr+')'
 
             eval(targetStr)
-            # v = self.KerasMdl.predict(imageData)
+            
+            gc.collect()#clear previous image data
+
 
     def TrainByGener(self, trainPath,
                      IncludeSet=[],

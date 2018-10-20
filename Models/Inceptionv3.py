@@ -4,9 +4,9 @@ from tensorflow.keras.layers import MaxPooling2D, AveragePooling2D, GlobalAverag
 from ILBPLayer import MyLayer
 from CNN_Module import bn_relu, conv_bn_relu
 
-def GetMdl( ClassNum ):
+def GetMdl( inputShape,ClassNum ):
 
-    input = Input(shape=(100, 100, 2))
+    input = Input(shape=inputShape)
 
     x = conv_bn_relu(filters=32, kernel_size=(3, 3), strides=(2, 2), padding='valid')(input)
     x = conv_bn_relu(filters=32, kernel_size=(3, 3), padding='valid')(x)
