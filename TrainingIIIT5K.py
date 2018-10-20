@@ -6,6 +6,7 @@ import numpy
 import string
 import LabelMgr
 from Models import MobileNetv2
+from Models import Inceptionv3
 """keras import"""
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
@@ -59,4 +60,5 @@ kerasObj.Train(imgObj,
                PreProcess='ILBPNet',
                verbose=1)
 
-kerasObj.SaveAll("TrainResult/", "IIIT5K_test")
+kerasObj.SaveWeight("TrainResult/", "IIIT5K_train_ILBPNet")
+

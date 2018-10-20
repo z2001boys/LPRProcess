@@ -161,10 +161,11 @@ class DataObj:
             for i in range(len(resultPath)):
                 f.write(resultPath[i]+','+preSet[intLabel[i]]+'\n')
 
-    def GetListSize():
+    def GetListSize(self):
         return len(self.ImgList)
 
-    def RadomLoad(self, ImgInfo , type='numpy', Dim=3,PreProcess = 'none',PickSize = 1000):
+
+    def RadomLoad(self, ImgInfo , type='numpy', Dim=3,PreProcess = 'none',PickSize = 1000,randIdx=[],kerasLabel = True):
         
         # basic info
         totalSize = len(self.ImgList)
@@ -175,7 +176,8 @@ class DataObj:
         print("==Target Image Channel : ", ImgInfo.Channel)
         print("==Target Image Flatten : ", ImgInfo.NeedFlatten)
 
-        randIdx = random.sample(range(totalSize), imgNum)
+        if randIdx==[]:
+            randIdx = random.sample(range(totalSize), imgNum)
 
         bar = progressbar.ProgressBar(maxval=100, widgets=[progressbar.Bar(
             '=', '[', ']'), ' ', progressbar.Percentage()])
@@ -229,8 +231,10 @@ class DataObj:
             NewImgData = NewImgData[:, :, :, np.newaxis]
         bar.finish()
 
-
-        labels,_ = self.ToIntLable(curLabel,FinalTarget="ArrayExtend")
+        if kerasLabel is True:
+            labels,_ = self.ToIntLable(curLabel,FinalTarget="ArrayExtend")
+        else:
+            labels,_ = self.ToIntLable(curLabel,FinalTarget="")
 
         # 回傳結果
         return NewImgData,labels

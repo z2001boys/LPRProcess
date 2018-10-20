@@ -7,6 +7,7 @@ import numpy as np
 import cv2
 import CommonMath
 import CommonStruct
+import math
 import ILBPLayer
 import gc
 import os
@@ -69,6 +70,22 @@ class KerasObj:
     def SaveWeight(self, _savePath, _weightName):
         _savePath = LabelImage.PathCheck(_savePath)
         self.KerasMdl.save_weights(_savePath+_weightName+"_weight.h5")
+
+    def BenchMark(self,imgObj,PreProcess = '',divideSize = 1000):
+
+        listSize = imgObj.GetListSize()
+        DoTimes = math.ceil(listSize/divideSize)
+        correct = 0
+        loss = 0
+        
+        for i in range(DoTimes):
+            pickIdx = list(range(i*divideSize,min((i+1)*divideSize,listSize-1)))
+            img,label = imgObj.RadomLoad(self.ImageInfo,PickSize=len(pickIdx), Dim=4 , PreProcess = PreProcess,randIdx = pickIdx,kerasLabel=True)
+            p = self.KerasMdl.evaluate(img,label)
+            print('current:' ,p)
+            currect = p[0]+currect
+            loss = loss+p[1]
+        return currect/DoTimes,loss/DoTimes
 
     def Train(self, imgObj, SelectMethod='all',rdnSize = -1 ,
         global_epoche = 1,
