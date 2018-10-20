@@ -2,10 +2,10 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense, Activation, BatchNormalization, ReLU
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D, ZeroPadding2D
 from ILBPLayer import MyLayer
-from CNN_Module import make_divisible, inverted_res_block
-def GetMdl( ClassNum ):
+from CNN_Module import make_divisible, inverted_res_block,correct_pad
+def GetMdl( inputShape ,ClassNum ):
 
-    input = Input(shape=(100, 100, 2))
+    input = Input(shape=inputShape)
 
     first_block_filters = make_divisible(32*1, 8)
     x = ZeroPadding2D(padding=correct_pad(input, 3))(input)

@@ -5,7 +5,7 @@ import MyKeras
 import numpy
 import string
 import LabelMgr
-from Models import Inceptionv3
+from Models import MobileNetv2
 """keras import"""
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
@@ -14,7 +14,7 @@ from tensorflow.keras.optimizers import SGD
 
 from tensorflow.keras.backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.3
+config.gpu_options.per_process_gpu_memory_fraction = 0.8
 config.gpu_options.visible_device_list = "0"
 set_session(tf.Session(config=config))
 
@@ -32,7 +32,7 @@ SortedClass = LabelMgr.GetAllLabel()
 
 # 設定模組
 kerasObj.NewSeq()
-kerasObj.KerasMdl = Inceptionv3.GetMdl((100, 100, 1),len(SortedClass)) 
+kerasObj.KerasMdl = MobileNetv2.GetMdl((100, 100, 16),len(SortedClass)) 
 
 sgd = SGD(lr=0.05, decay=1e-6, momentum=0.9, nesterov=True)
 kerasObj.Compile(_optimize='rmsprop',
@@ -54,9 +54,9 @@ kerasObj.Train(imgObj,
                SelectMethod='rdn',
                batch_size=128,
                epochs=10,
-               rdnSize=1000,
+               rdnSize=2000,
                global_epoche=10,
-               PreProcess='',
+               PreProcess='ILBPNet',
                verbose=1)
 
 kerasObj.SaveAll("TrainResult/", "IIIT5K_test")
