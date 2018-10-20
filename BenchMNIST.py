@@ -25,7 +25,7 @@ set_session(tf.Session(config=config))
 
 # create object
 imgObj = LabelImage.DataObj()
-imgObj.Rotation = 5
+
 testImgObj = LabelImage.DataObj()
 kerasObj = MyKeras.KerasObj()
 
@@ -49,23 +49,14 @@ kerasObj.Compile(_optimize='rmsprop',
 kerasObj.LoadWeight("TrainResult/", "IIIT5K_train_ILBPNet")
 
 
-imgObj.LoadList("D:\\DataSet\\IIIT5K\\testList.txt",
+imgObj.LoadList("D:\\DataSet\\MNIST\\testList.txt",
                         SortedClass=SortedClass)
 
 
-correct = []
-loss = []
-for r in range(-90,91,15):
-    imgObj.Rotation = r
-    c,l = kerasObj.BenchMark(imgObj,PreProcess="ILBPNet",divideSize=5000)
-    correct.append(c)
-    loss.append(l)
 
 
-with open('D:\\correct.txt', 'w') as f:
-    for item in correct:
-        f.write("%s\n" % item)
+c,l = kerasObj.BenchMark(imgObj,PreProcess="ILBPNet",divideSize=5000)
 
-with open('D:\\loss.txt', 'w') as f:
-    for item in loss:
-        f.write("%s\n" % item)
+print(c,l)
+
+

@@ -83,14 +83,14 @@ class KerasObj:
             img,label = imgObj.RadomLoad(self.ImageInfo,PickSize=len(pickIdx), Dim=4 , PreProcess = PreProcess,randIdx = pickIdx,kerasLabel=True)
             p = self.KerasMdl.evaluate(img,label)
             print('current:' ,p)
-            currect = p[0]+currect
-            loss = loss+p[1]
-        return currect/DoTimes,loss/DoTimes
+            correct = p[1]+correct
+            loss = loss+p[0]
+        return correct/DoTimes,loss/DoTimes
 
     def Train(self, imgObj, SelectMethod='all',rdnSize = -1 ,
         global_epoche = 1,
         PreProcess = '',
-        batch_size=-1, epochs=-1, verbose=-1):
+        batch_size=32, epochs=1, verbose=0,valitationSplit = 0.0):
 
         #若RDN==-1則使用全部的影像
         if rdnSize == -1:
@@ -105,18 +105,12 @@ class KerasObj:
             print("==Total layer : ", self.LayerNum)
             print("==Global Epoche : ", i)
 
-            # build train command
-            targetStr = 'self.KerasMdl.fit(imageData, label'
-            if(batch_size != -1):
-                targetStr = targetStr + ',batch_size='+str(batch_size)
-            if(epochs != -1):
-                targetStr = targetStr + ',epochs='+str(epochs)
-            if(verbose != -1):
-                targetStr = targetStr + ',verbose='+str(verbose)
 
-            targetStr = targetStr+')'
-
-            eval(targetStr)
+            self.KerasMdl.fit(imageData,label,
+                batch_size = batch_size,
+                epochs=epochs,
+                verbose=verbose,
+                validation_split=0.3 )
             
             gc.collect()#clear previous image data
 

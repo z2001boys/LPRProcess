@@ -10,6 +10,7 @@ import string
 import LabelMgr
 from Models import MobileNetv2
 from Models import Inceptionv3
+from Models import DarkNet53
 """keras import"""
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
@@ -25,7 +26,7 @@ set_session(tf.Session(config=config))
 
 # create object
 imgObj = LabelImage.DataObj()
-imgObj.Rotation = 5
+
 testImgObj = LabelImage.DataObj()
 kerasObj = MyKeras.KerasObj()
 
@@ -37,7 +38,7 @@ SortedClass = LabelMgr.GetAllLabel()
 
 # 設定模組
 kerasObj.NewSeq()
-kerasObj.KerasMdl = MobileNetv2.GetMdl((100, 100, 16),len(SortedClass)) 
+kerasObj.KerasMdl = DarkNet53.GetMdl((100, 100, 1),len(SortedClass)) 
 
 
 sgd = SGD(lr=0.05, decay=1e-6, momentum=0.9, nesterov=True)
@@ -46,26 +47,14 @@ kerasObj.Compile(_optimize='rmsprop',
                  _metrics=['accuracy'])
 
 
-kerasObj.LoadWeight("TrainResult/", "IIIT5K_train_ILBPNet")
+kerasObj.LoadWeight("TrainResult/", "MNIST_train_DarkNet53")
 
 
-imgObj.LoadList("D:\\DataSet\\IIIT5K\\testList.txt",
+imgObj.LoadList("D:\\DataSet\\MNIST\\testList.txt",
                         SortedClass=SortedClass)
 
 
-correct = []
-loss = []
-for r in range(-90,91,15):
-    imgObj.Rotation = r
-    c,l = kerasObj.BenchMark(imgObj,PreProcess="ILBPNet",divideSize=5000)
-    correct.append(c)
-    loss.append(l)
 
+c,l = kerasObj.BenchMark(imgObj,PreProcess="",divideSize=5000)
 
-with open('D:\\correct.txt', 'w') as f:
-    for item in correct:
-        f.write("%s\n" % item)
-
-with open('D:\\loss.txt', 'w') as f:
-    for item in loss:
-        f.write("%s\n" % item)
+print(c,l)

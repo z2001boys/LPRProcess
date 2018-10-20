@@ -4,9 +4,9 @@ from tensorflow.keras.layers import MaxPooling2D, AveragePooling2D, GlobalAverag
 from ILBPLayer import MyLayer
 from CNN_Module import stem_v4, inception_a_v4, reduction_a_v4, inception_b_v4, reduction_b_v4, inception_c_v4
 
-def GetMdl( ClassNum ):
+def GetMdl(inputShape, ClassNum ):
 
-    input = Input(shape=(100, 100, 2))
+    input = Input(shape=inputShape)
 
     x = stem_v4()(input)
 

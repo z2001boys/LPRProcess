@@ -3,9 +3,9 @@ from tensorflow.keras.layers import Input, Conv2D, Activation, Dense
 from tensorflow.keras.layers import MaxPooling2D, GlobalAveragePooling2D
 from ILBPLayer import MyLayer
 from CNN_Module import bn_relu, conv_bn_relu, darknet_bottleneck
-def GetMdl( ClassNum ):
+def GetMdl( InputShape, ClassNum ):
 
-    input = Input(shape=(100, 100, 2))
+    input = Input(shape=InputShape)
 
     x = conv_bn_relu(filters=32, kernel_size=(3, 3))(input)
     x = conv_bn_relu(filters=64, kernel_size=(3, 3), strides=(2, 2))(x)

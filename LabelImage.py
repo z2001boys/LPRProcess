@@ -27,7 +27,7 @@ def PathCheck(s):
     return s
 
 
-def ToTargetImageFormat(img, ImgInfo, FlattenSize=-1,Format = numpy.float):
+def ToTargetImageFormat(img, ImgInfo, FlattenSize=-1,Format = numpy.float,Rotation=0,Noise=0):
 
     if len(img.shape) == 3 and img.shape[2] == 3:
         oriDataIsGray = False
@@ -45,6 +45,10 @@ def ToTargetImageFormat(img, ImgInfo, FlattenSize=-1,Format = numpy.float):
 
     if img.shape[0] != ImgInfo.Size[0] or img.shape[1] != ImgInfo.Size[1]:
         img = cv2.resize(img, (ImgInfo.Size[0], ImgInfo.Size[1]))
+
+    if Rotation!=0:
+        M = cv2.getRotationMatrix2D((ImgInfo.Size[0]/2, ImgInfo.Size[1]/2),Rotation,1)
+        img = cv2.warpAffine(img,M,(ImgInfo.Size[0], ImgInfo.Size[1]))
 
     # flatten option
     if ImgInfo.NeedFlatten:
@@ -93,6 +97,8 @@ class DataObj:
         self.MappedClass = []
         self.Label = []
         self.ImgList = []
+        self.Rotation = 0
+        self.AddNoies =0
 
     def CreateAccessCache(self, path, wantedLabel):
         path = PathCheck(path)
@@ -210,7 +216,8 @@ class DataObj:
                 f = numpy.uint8
 
             img = ToTargetImageFormat(
-                img, ImgInfo, FlattenSize=FlattenSize, Format = f)
+                img, ImgInfo, FlattenSize=FlattenSize, Format = f,Rotation=self.Rotation)
+
 
             if PreProcess == "ILBPNet":
                 gpuMat = CuMat.CudaMat(img=img)

@@ -11,3 +11,6 @@ ILBPDll/__pycache__/ILBPClass.cpython-36.pyc
 ILBPDll/__pycache__/CudaComMat.cpython-36.pyc
 ILBPDll/__pycache__/CommonMath.cpython-36.pyc
 ILBPDll/__pycache__/__init__.cpython-36.pyc
+TrainResult/IIIT5K_train_ILBPNet_g5_e10_weight.h5
+*.h5
+*.pyc

@@ -56,9 +56,9 @@ kerasObj.Train(imgObj,
                batch_size=128,
                epochs=10,
                rdnSize=2000,
-               global_epoche=10,
+               global_epoche=5,
                PreProcess='ILBPNet',
                verbose=1)
 
-kerasObj.SaveWeight("TrainResult/", "IIIT5K_train_ILBPNet")
+kerasObj.SaveWeight("TrainResult/", "IIIT5K_train_ILBPNet_g5_e10")
 
