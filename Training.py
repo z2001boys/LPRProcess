@@ -37,7 +37,8 @@ def SetTrain(DataSetName,Model,GlobalEpoche,Epoche,rdnSize = 2000,PrePorcess='')
     SortedClass = LabelMgr.GetAllLabel()
 
     channerSize = 1
-    if PrePorcess=="ILBPNet":
+    if Model=="ILBPNet":
+        PrePorcess = "ILBPNet"
         channerSize = 16
 
     # 設定模組
@@ -72,5 +73,5 @@ def SetTrain(DataSetName,Model,GlobalEpoche,Epoche,rdnSize = 2000,PrePorcess='')
                 PreProcess=PrePorcess,
                 verbose=1)
 
-    kerasObj.SaveWeight("TrainResult/", "MNIST_train_DarkNet53")
+    kerasObj.SaveWeight("TrainResult/", "MNIST_train_"+Model)
 
