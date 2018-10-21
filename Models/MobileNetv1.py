@@ -3,9 +3,9 @@ from tensorflow.keras.layers import Input, Activation
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D
 from ILBPLayer import MyLayer
 from CNN_Module import mn_conv_block, depthwise_conv_block
-def GetMdl( ClassNum ):
+def GetMdl( inputShape,ClassNum ):
 
-    input = Input(shape=(100, 100, 2))
+    input = Input(shape=inputShape)
 
     x = mn_conv_block(32, alpha=0.75, strides=(2, 2))(input)
 

@@ -23,10 +23,13 @@ config.gpu_options.visible_device_list = "0"
 set_session(tf.Session(config=config))
 
 
-def SetTrain(DataSetName,Model,GlobalEpoche,Epoche,rdnSize = 2000,PrePorcess=''):
+def SetTrain(DataSetName,Model,
+    batchSize = 128,
+    GlobalEpoche=10,Epoche=10,rdnSize = 2000):
 
     # create object
     imgObj = LabelImage.DataObj()
+    imgObj.Rotation
     testImgObj = LabelImage.DataObj()
     kerasObj = MyKeras.KerasObj()
 
@@ -46,7 +49,7 @@ def SetTrain(DataSetName,Model,GlobalEpoche,Epoche,rdnSize = 2000,PrePorcess='')
     if PrePorcess != "ILBPNet":
         exec('kerasObj.KerasMdl = '+Model+'.GetMdl((100, 100, channerSize),len(SortedClass))' )
     else:
-        kerasObj.KerasMdl = MobileNetv2.GetMdl((100, 100, channerSize),len(SortedClass))
+        kerasObj.KerasMdl = MobileNetv2.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
 
     sgd = SGD(lr=0.05, decay=1e-6, momentum=0.9, nesterov=True)
     kerasObj.Compile(_optimize='rmsprop',
@@ -63,7 +66,6 @@ def SetTrain(DataSetName,Model,GlobalEpoche,Epoche,rdnSize = 2000,PrePorcess='')
                             SortedClass=SortedClass)
 
 
-
     kerasObj.Train(imgObj,
                 SelectMethod='rdn',
                 batch_size=128,
@@ -73,5 +75,5 @@ def SetTrain(DataSetName,Model,GlobalEpoche,Epoche,rdnSize = 2000,PrePorcess='')
                 PreProcess=PrePorcess,
                 verbose=1)
 
-    kerasObj.SaveWeight("TrainResult/", "MNIST_train_"+Model)
+    kerasObj.SaveWeight("TrainResult/", Model+"_train_"+Model)
 
