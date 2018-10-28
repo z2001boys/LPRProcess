@@ -11,6 +11,7 @@ import LabelMgr
 from Models import MobileNetv1
 from Models import MobileNetv2
 from Models import Inceptionv3
+from Models import ILBPNet
 """keras import"""
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
@@ -34,10 +35,10 @@ def Test(NetModel,BenchData):
     kerasObj.ImageInfo.Channel = 1
 
     PreProcess = ''
-    inputChannel = 1
+    channerSize = 1
     if NetModel=='ILBPNet':
         PreProcess = "ILBPNet"
-        inputChannel = 16
+        channerSize = 16
 
     # get labels
     SortedClass = LabelMgr.GetAllLabel()
@@ -47,7 +48,7 @@ def Test(NetModel,BenchData):
     if NetModel != "ILBPNet":
         exec('kerasObj.KerasMdl = '+NetModel+'.GetMdl((100, 100, channerSize),len(SortedClass))' )
     else:
-        kerasObj.KerasMdl = MobileNetv1.GetMdl((100, 100, inputChannel),len(SortedClass))#ILBP
+        kerasObj.KerasMdl = ILBPNet.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
 
 
     sgd = SGD(lr=0.05, decay=1e-6, momentum=0.9, nesterov=True)
@@ -59,7 +60,7 @@ def Test(NetModel,BenchData):
     kerasObj.LoadWeight("TrainResult/", BenchData+"_train_"+NetModel)
 
 
-    imgObj.LoadList("D:\\DataSet\\"+NetModel+"\\testList.txt",
+    imgObj.LoadList("D:\\DataSet\\"+BenchData+"\\testList.txt",
                             SortedClass=SortedClass)
 
 

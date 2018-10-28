@@ -79,7 +79,7 @@ class KerasObj:
         loss = 0
         
         for i in range(DoTimes):
-            pickIdx = list(range(i*divideSize,min((i+1)*divideSize,listSize-1)))
+            pickIdx = list(range(i*divideSize,min((i+1)*divideSize,listSize)))
             img,label = imgObj.RadomLoad(self.ImageInfo,PickSize=len(pickIdx), Dim=4 , PreProcess = PreProcess,randIdx = pickIdx,kerasLabel=True)
             p = self.KerasMdl.evaluate(img,label)
             print('current:' ,p)

@@ -8,7 +8,7 @@ import time
 
 TimeTest = False
 
-img1 = cv2.imread('D:\\test.jpg', 0)
+img1 = cv2.imread('D:\\test3.jpg', 0)
 # c1 = CudaComMat.CudaMat(ReadPath='D:\\3d\\Calib0827\\0\\cam0.png')
 c1 = CudaComMat.CudaMat(img=img1)
 c1.Upload()

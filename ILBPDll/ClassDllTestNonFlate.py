@@ -13,7 +13,7 @@ img1 = cv2.imread('D:\\test.jpg', 0)
 c1 = CudaComMat.CudaMat(img=img1)
 c1.Upload()
 
-firstSel,maxSel = c1.CreateILBP(Flatten=False)
+firstSel = c1.CreateILBPNet()
 
 plt.imshow(img1)
 # x,y

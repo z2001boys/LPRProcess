@@ -2,6 +2,15 @@
 
 
 import Training
+import Bench
+
+testNet = "ILBPNet"
+testSet = "SHVT"
 
 
-Training.SetTrain("SHVT","Inceptionv3",GlobalEpoche= 5,rdnSize=1000,Epoche=10,batchSize=10)
+Training.SetTrain(testSet,testNet,GlobalEpoche= 5,rdnSize=3000,Epoche=6,batchSize=128)
+
+
+acc,loss = Bench.Test(testNet,BenchData=testSet)
+
+print(acc,loss)

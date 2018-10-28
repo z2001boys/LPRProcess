@@ -1,4 +1,6 @@
 import Bench
 
 
-Bench.Test("ILBPNet",BenchData="IIIT5K")
+acc,loss = Bench.Test("ILBPNet",BenchData="SHVT")
+
+print(acc,loss)

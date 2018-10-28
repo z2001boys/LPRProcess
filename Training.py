@@ -10,6 +10,8 @@ from Models import MobileNetv2
 from Models import Inceptionv3
 from Models import DarkNet53
 from Models import Inceptionv4
+from Models import ILBPNet
+from Models import BasicModel
 
 """keras import"""
 from tensorflow.keras.models import Sequential
@@ -52,11 +54,11 @@ def SetTrain(DataSetName,Model,
     if Model != "ILBPNet":
         exec('kerasObj.KerasMdl = '+Model+'.GetMdl((100, 100, channerSize),len(SortedClass))' )
     else:
-        kerasObj.KerasMdl = MobileNetv1.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
+        kerasObj.KerasMdl = ILBPNet.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
 
-    sgd = SGD(lr=0.05, decay=1e-6, momentum=0.9, nesterov=True)
-    kerasObj.Compile(_optimize='rmsprop',
-                    _loss=sgd,  # 'categorical_crossentropy',
+    sgd = SGD(lr=0.0001, decay=1e-6, momentum=0.6, nesterov=True)
+    kerasObj.Compile(_optimize='adam',
+                    _loss='categorical_crossentropy',
                     _metrics=['accuracy'])
 
     # Load image
@@ -78,5 +80,5 @@ def SetTrain(DataSetName,Model,
                 PreProcess=PrePorcess,
                 verbose=1)
 
-    kerasObj.SaveWeight("TrainResult/", Model+"_train_"+Model)
+    kerasObj.SaveWeight("TrainResult/", DataSetName+"_train_"+Model)
 
