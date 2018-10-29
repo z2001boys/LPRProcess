@@ -18,7 +18,7 @@ from tensorflow.keras.layers import Dense, Dropout, Flatten,Input,AveragePooling
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.optimizers import SGD
 from ILBPLayer import MyLayer
-
+import pickle
 
 class KerasObj:
     def __init__(self, _ImageSize=[100, 100], _ImageChannel=1, _ImageFlatten=False):
@@ -31,6 +31,7 @@ class KerasObj:
         self.ImageInfo.Size = _ImageSize
         self.ImageInfo.Channel = _ImageChannel
         self.ImageInfo.NeedFlatten = _ImageFlatten
+        self.ValidateSplit = 0.0
 
     def NewSeq(self):
         self.KerasMdl = Sequential()
@@ -90,27 +91,30 @@ class KerasObj:
     def Train(self, imgObj, SelectMethod='all',rdnSize = -1 ,
         global_epoche = 1,
         PreProcess = '',
-        batch_size=32, epochs=1, verbose=0,valitationSplit = 0.0):
+        batch_size=32, epochs=1, verbose=0,valitationSplit = 0.0,
+        savePath = ''):
 
         #若RDN==-1則使用全部的影像
         if rdnSize == -1:
             rdnSize = imgObj.GetListSize()
 
         for i in range(global_epoche):
+            print("Start Training")
+            print("==Total layer : ", self)
+            print("==Global Epoche : ", i)
             print("Prepare data...-")
             imageData,label = imgObj.RadomLoad(self.ImageInfo,PickSize=rdnSize, Dim=4 , PreProcess = PreProcess)
                 
-
-            print("Start Training")
-            print("==Total layer : ", self.LayerNum)
-            print("==Global Epoche : ", i)
-
-
-            self.KerasMdl.fit(imageData,label,
+        
+            singleResult = self.KerasMdl.fit(imageData,label,
                 batch_size = batch_size,
                 epochs=epochs,
                 verbose=verbose,
-                validation_split=0.3 )
+                validation_split=self.ValidateSplit )
+
+            if savePath != '':
+                with open('TrainHistory\\'+savePath+'_', 'w') as file_pi:
+                    pickle.dump(singleResult.history, file_pi)
             
             gc.collect()#clear previous image data
 

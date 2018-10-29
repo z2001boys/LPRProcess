@@ -46,9 +46,15 @@ def ToTargetImageFormat(img, ImgInfo, FlattenSize=-1,Format = numpy.float,Rotati
     if img.shape[0] != ImgInfo.Size[0] or img.shape[1] != ImgInfo.Size[1]:
         img = cv2.resize(img, (ImgInfo.Size[0], ImgInfo.Size[1]))
 
-    if Rotation!=0:
-        M = cv2.getRotationMatrix2D((ImgInfo.Size[0]/2, ImgInfo.Size[1]/2),Rotation,1)
+
+    if Rotation == 'rdn':
+        rot = randint(0,359)
+        M = cv2.getRotationMatrix2D((ImgInfo.Size[0]/2, ImgInfo.Size[1]/2),rot,1)
         img = cv2.warpAffine(img,M,(ImgInfo.Size[0], ImgInfo.Size[1]))
+    elif Rotation != 0 :        
+        M = cv2.getRotationMatrix2D((ImgInfo.Size[0]/2, ImgInfo.Size[1]/2),Rotation,1)
+        img = cv2.warpAffine(img,M,(ImgInfo.Size[0], ImgInfo.Size[1]))    
+    
 
     # flatten option
     if ImgInfo.NeedFlatten:
@@ -183,7 +189,7 @@ class DataObj:
         print("==Target Image Flatten : ", ImgInfo.NeedFlatten)
 
         if randIdx==[]:
-            randIdx = random.sample(range(totalSize), imgNum)
+            randIdx = random.sample(range(totalSize), min(totalSize,imgNum))
 
         bar = progressbar.ProgressBar(maxval=100, widgets=[progressbar.Bar(
             '=', '[', ']'), ' ', progressbar.Percentage()])

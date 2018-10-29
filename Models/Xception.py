@@ -1,11 +1,11 @@
-from tensorflow.keras.models import Model, Input
-from tensorflow.keras.layers import Conv2D, SeparableConv2D, Dense, Dropout, Flatten, BatchNormalization, add, Activation
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input,Conv2D, SeparableConv2D, Dense, Dropout, Flatten, BatchNormalization, add, Activation
 from tensorflow.keras.layers import MaxPooling2D, AveragePooling2D, GlobalAveragePooling2D
 from ILBPLayer import MyLayer
 from CNN_Module import bn_relu, conv_bn_relu
-def GetMdl( ClassNum ):
+def GetMdl( inputShape,ClassNum ):
 
-    input = Input(shape=(100, 100, 2))
+    input = Input(shape=inputShape)
 
     x = conv_bn_relu(filters=32, kernel_size=(3, 3), strides=(2, 2))(input)
     x = conv_bn_relu(filters=64, kernel_size=(3, 3))(x)

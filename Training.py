@@ -11,6 +11,7 @@ from Models import Inceptionv3
 from Models import DarkNet53
 from Models import Inceptionv4
 from Models import ILBPNet
+from Models import Xception
 from Models import BasicModel
 
 """keras import"""
@@ -69,6 +70,7 @@ def SetTrain(DataSetName,Model,
     else:
         imgObj.LoadList("DatasetList/TrainingList.txt",
                             SortedClass=SortedClass)
+    
 
 
     kerasObj.Train(imgObj,
@@ -78,7 +80,8 @@ def SetTrain(DataSetName,Model,
                 rdnSize=rdnSize,
                 global_epoche=GlobalEpoche,
                 PreProcess=PrePorcess,
-                verbose=1)
+                verbose=1,
+                savePath=Model+'_'+DataSetName)
 
     kerasObj.SaveWeight("TrainResult/", DataSetName+"_train_"+Model)
 
