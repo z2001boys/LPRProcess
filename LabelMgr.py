@@ -24,3 +24,9 @@ def DigitalOnly():
     SortedClass = string.digits
     SortedClass = list(SortedClass)    
     return SortedClass
+
+def GetInt(r):
+    SortedClass = []
+    for i in range(r):
+        SortedClass.append(str(i))
+    return SortedClass

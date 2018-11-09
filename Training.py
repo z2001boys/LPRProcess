@@ -5,6 +5,7 @@ import MyKeras
 import numpy
 import string
 import LabelMgr
+import math
 from Models import MobileNetv1
 from Models import MobileNetv2
 from Models import Inceptionv3
@@ -13,6 +14,10 @@ from Models import Inceptionv4
 from Models import ILBPNet
 from Models import Xception
 from Models import BasicModel
+from Models import DenseNet169
+from Models import DarkNet53
+from Models import ResNet50
+from Models import ILBPNetv2
 
 """keras import"""
 from tensorflow.keras.models import Sequential
@@ -43,7 +48,11 @@ def SetTrain(DataSetName,Model,
     kerasObj.ImageInfo.Channel = 1
 
     # get labels
-    SortedClass = LabelMgr.GetAllLabel()
+    if(DataSetName=="CIFAR-100"):
+        SortedClass = LabelMgr.GetInt(100)
+    else:
+        SortedClass = LabelMgr.GetAllLabel()
+
 
     channerSize = 1
     if Model=="ILBPNet":
@@ -55,12 +64,12 @@ def SetTrain(DataSetName,Model,
     if Model != "ILBPNet":
         exec('kerasObj.KerasMdl = '+Model+'.GetMdl((100, 100, channerSize),len(SortedClass))' )
     else:
-        kerasObj.KerasMdl = ILBPNet.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
+        kerasObj.KerasMdl = ILBPNetv2.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
 
-    sgd = SGD(lr=0.0001, decay=1e-6, momentum=0.6, nesterov=True)
-    kerasObj.Compile(_optimize='adam',
-                    _loss='categorical_crossentropy',
-                    _metrics=['accuracy'])
+    
+    kerasObj.KerasMdl.compile(optimizer='adam',
+                    loss='categorical_crossentropy',
+                    metrics=['accuracy'])
 
     # Load image
     if(os.name == 'nt'):
@@ -71,6 +80,11 @@ def SetTrain(DataSetName,Model,
         imgObj.LoadList("DatasetList/TrainingList.txt",
                             SortedClass=SortedClass)
     
+    kerasObj.ValidateSplit = 0.1
+
+    if GlobalEpoche == -1:
+        imgSize = len(imgObj.ImgList)
+        GlobalEpoche = math.ceil( imgSize/rdnSize )
 
 
     kerasObj.Train(imgObj,

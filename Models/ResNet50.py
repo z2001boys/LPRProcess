@@ -4,9 +4,9 @@ from tensorflow.keras.layers import MaxPooling2D, AveragePooling2D
 from tensorflow.keras import backend as K 
 from ILBPLayer import MyLayer
 from CNN_Module import bn_relu, conv_bn_relu, bottleneck
-def GetMdl( ClassNum ):
+def GetMdl( inputShape, ClassNum ):
 
-    input = Input(shape=(100, 100, 2))
+    input = Input(shape=inputShape)
 
     conv1 = conv_bn_relu(filters=64, kernel_size=(7, 7), strides=(2, 2))(input)
     pool1 = MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding="same")(conv1)

@@ -181,7 +181,7 @@ class DataObj:
         
         # basic info
         totalSize = len(self.ImgList)
-        imgNum = PickSize
+        imgNum = min(len(self.ImgList),PickSize)
         FlattenSize = ImgInfo.Size[0] * ImgInfo.Size[1] * ImgInfo.Channel
         print("Preprocessing images...")
         print("==Target Image Size : ", ImgInfo.Size)
@@ -244,10 +244,11 @@ class DataObj:
             NewImgData = NewImgData[:, :, :, np.newaxis]
         bar.finish()
 
-        if kerasLabel is True:
+        if kerasLabel == True:
             labels,_ = self.ToIntLable(curLabel,FinalTarget="ArrayExtend")
-        else:
-            labels,_ = self.ToIntLable(curLabel,FinalTarget="")
+        
+
+
 
         # 回傳結果
         return NewImgData,labels
@@ -450,7 +451,7 @@ class DataObj:
             # return extendLabel, len(existDict)
             
             labelSize = len(existDict)
-            ExtendLabel = np.zeros((dataSize, len(existDict)))
+            ExtendLabel = np.zeros((dataSize, len(existDict)),dtype=np.float)
 
             preLabel = np.zeros((labelSize, labelSize))
             for i in range(0, labelSize):

@@ -1,11 +1,11 @@
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Activation, BatchNormalization
-from tensorflow.keras.layers import MaxPooling2D, GlobalAveragePooling2D
+from tensorflow.keras.layers import MaxPooling2D, GlobalAveragePooling2D,Dense
 from ILBPLayer import MyLayer
 from CNN_Module import conv_bn_relu, dense_block, transition_block
-def GetMdl( ClassNum ):
+def GetMdl(inputShape, ClassNum ):
 
-    input = Input(shape=(100, 100, 2))
+    input = Input(shape=inputShape)
 
     nb_dense_block = 4
     nb_layer = [6, 12, 32, 32]

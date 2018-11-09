@@ -1,6 +1,3 @@
-
-
-
 import tensorflow as tf
 import LabelImage
 import os
@@ -13,6 +10,10 @@ from Models import MobileNetv2
 from Models import Inceptionv3
 from Models import ILBPNet
 from Models import Xception
+from Models import DenseNet169
+from Models import DarkNet53
+from Models import ResNet50
+from Models import ILBPNetv2
 """keras import"""
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
@@ -42,20 +43,23 @@ def Test(NetModel,BenchData):
         channerSize = 16
 
     # get labels
-    SortedClass = LabelMgr.GetAllLabel()
+    if(BenchData=="CIFAR-100"):
+        SortedClass = LabelMgr.GetInt(100)
+    else:
+        SortedClass = LabelMgr.GetAllLabel()
 
     # 設定模組
     kerasObj.NewSeq()
     if NetModel != "ILBPNet":
         exec('kerasObj.KerasMdl = '+NetModel+'.GetMdl((100, 100, channerSize),len(SortedClass))' )
     else:
-        kerasObj.KerasMdl = ILBPNet.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
+        kerasObj.KerasMdl = ILBPNetv2.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
 
 
     sgd = SGD(lr=0.05, decay=1e-6, momentum=0.9, nesterov=True)
-    kerasObj.Compile(_optimize='rmsprop',
-                    _loss=sgd,  # 'categorical_crossentropy',
-                    _metrics=['accuracy'])
+    kerasObj.KerasMdl.compile(optimizer='adam',
+                    loss='categorical_crossentropy',
+                    metrics=['accuracy'])
 
 
     kerasObj.LoadWeight("TrainResult/", BenchData+"_train_"+NetModel)

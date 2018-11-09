@@ -28,7 +28,9 @@ def GetMdl( inputShape ,ClassNum ):
     x = inverted_res_block(t=6, strides=(2, 2), alpha=1, filters=320)(x)
 
     x = inverted_res_block(t=6, strides=(1, 1), alpha=1, filters=480)(x)
-    #x = inverted_res_block(t=6, strides=(2, 2), alpha=1, filters=480)(x)
+
+    x = inverted_res_block(t=6, strides=(1, 1), alpha=1, filters=720)(x)
+
 
     x = inverted_res_block(t=1, strides=(2, 2), alpha=1, filters=1024)(x)
 

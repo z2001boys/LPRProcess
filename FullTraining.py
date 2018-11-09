@@ -4,13 +4,26 @@
 import Training
 import Bench
 
-testNet = "Xception"
-testSet = "IIIT5K"
 
 
-Training.SetTrain(testSet,testNet,GlobalEpoche= 5,rdnSize=3000,Epoche=6,batchSize=128)
+testNet = []
+testSet = []
 
 
-acc,loss = Bench.Test(testNet,BenchData=testSet)
+testNet = "ILBPNet"
 
-print(acc,loss) 
+testSet.append("IIIT5K")
+
+
+accData = dict()
+lossData =dict()
+
+for t in testSet:        
+    Training.SetTrain(t,testNet,GlobalEpoche= 1,rdnSize=10000,Epoche=50,batchSize=64)
+    acc,loss = Bench.Test(testNet,BenchData=t)
+    accData[t] = acc
+    lossData[t] = loss
+
+
+print(accData)
+print(lossData)

@@ -82,7 +82,14 @@ class KerasObj:
         for i in range(DoTimes):
             pickIdx = list(range(i*divideSize,min((i+1)*divideSize,listSize)))
             img,label = imgObj.RadomLoad(self.ImageInfo,PickSize=len(pickIdx), Dim=4 , PreProcess = PreProcess,randIdx = pickIdx,kerasLabel=True)
+
             p = self.KerasMdl.evaluate(img,label)
+            Y_pred = self.KerasMdl.predict(img)
+            y_classes = Y_pred.argmax(axis=-1)
+            for j in range(label.shape()):
+                print(y_classes[j])
+
+            
             print('current:' ,p)
             correct = p[1]+correct
             loss = loss+p[0]
@@ -100,7 +107,7 @@ class KerasObj:
 
         for i in range(global_epoche):
             print("Start Training")
-            print("==Total layer : ", self)
+            print("==Total layer : ", len(self.KerasMdl.layers))
             print("==Global Epoche : ", i)
             print("Prepare data...-")
             imageData,label = imgObj.RadomLoad(self.ImageInfo,PickSize=rdnSize, Dim=4 , PreProcess = PreProcess)
@@ -113,7 +120,7 @@ class KerasObj:
                 validation_split=self.ValidateSplit )
 
             if savePath != '':
-                with open('TrainHistory\\'+savePath+'_', 'w') as file_pi:
+                with open('TrainHistory\\'+savePath+'_'+str(epochs)+'_'+str(i), 'wb') as file_pi:
                     pickle.dump(singleResult.history, file_pi)
             
             gc.collect()#clear previous image data
@@ -177,8 +184,8 @@ class KerasObj:
         return 1
 
     def Compile(self, _optimize, _loss, _metrics):
-        self.KerasMdl.compile(optimizer='rmsprop',
-                              loss='binary_crossentropy',
+        self.KerasMdl.compile(optimizer=_optimize,
+                              loss=_loss,
                               metrics=['accuracy'])
 
     def FindInImage(self, img, score, labels):
