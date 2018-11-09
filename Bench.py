@@ -53,7 +53,7 @@ def Test(NetModel,BenchData):
     if NetModel != "ILBPNet":
         exec('kerasObj.KerasMdl = '+NetModel+'.GetMdl((100, 100, channerSize),len(SortedClass))' )
     else:
-        kerasObj.KerasMdl = ILBPNetv2.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
+        kerasObj.KerasMdl = ILBPNet.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
 
 
     sgd = SGD(lr=0.05, decay=1e-6, momentum=0.9, nesterov=True)

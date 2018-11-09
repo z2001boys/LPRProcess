@@ -64,7 +64,7 @@ def SetTrain(DataSetName,Model,
     if Model != "ILBPNet":
         exec('kerasObj.KerasMdl = '+Model+'.GetMdl((100, 100, channerSize),len(SortedClass))' )
     else:
-        kerasObj.KerasMdl = ILBPNetv2.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
+        kerasObj.KerasMdl = ILBPNet.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
 
     
     kerasObj.KerasMdl.compile(optimizer='adam',
