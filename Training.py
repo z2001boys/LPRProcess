@@ -18,23 +18,18 @@ from Models import DenseNet169
 from Models import DarkNet53
 from Models import ResNet50
 from Models import ILBPNetv2
-
+from Models import ShuffleNetv2
 """keras import"""
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.optimizers import SGD
 
-from tensorflow.keras.backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.8
-config.gpu_options.visible_device_list = "0"
-set_session(tf.Session(config=config))
-
 
 def SetTrain(DataSetName,Model,
     batchSize = 128,
-    GlobalEpoche=10,Epoche=10,rdnSize = 2000):
+    GlobalEpoche=10,Epoche=10,rdnSize = 2000,
+    skLearn = False):
 
     PrePorcess = ''
 
@@ -57,14 +52,16 @@ def SetTrain(DataSetName,Model,
     channerSize = 1
     if Model=="ILBPNet":
         PrePorcess = "ILBPNet"
-        channerSize = 16
+        channerSize = 3
 
     # 設定模組
     kerasObj.NewSeq()
     if Model != "ILBPNet":
         exec('kerasObj.KerasMdl = '+Model+'.GetMdl((100, 100, channerSize),len(SortedClass))' )
     else:
-        kerasObj.KerasMdl = ILBPNet.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
+        kerasObj.KerasMdl = ILBPNetv2.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
+
+    kerasObj.KerasMdl.summary()
 
     
     kerasObj.KerasMdl.compile(optimizer='adam',
@@ -86,16 +83,26 @@ def SetTrain(DataSetName,Model,
         imgSize = len(imgObj.ImgList)
         GlobalEpoche = math.ceil( imgSize/rdnSize )
 
-
-    kerasObj.Train(imgObj,
-                SelectMethod='rdn',
-                batch_size=128,
-                epochs=Epoche,
-                rdnSize=rdnSize,
-                global_epoche=GlobalEpoche,
-                PreProcess=PrePorcess,
-                verbose=1,
-                savePath=Model+'_'+DataSetName)
+    if skLearn==True:
+        kerasObj.TrainBySvm(imgObj,
+                    SelectMethod='rdn',
+                    batch_size=128,
+                    epochs=Epoche,
+                    rdnSize=rdnSize,
+                    global_epoche=GlobalEpoche,
+                    PreProcess=PrePorcess,
+                    verbose=1,
+                    savePath=Model+'_'+DataSetName)
+    else:
+        kerasObj.Train(imgObj,
+                    SelectMethod='rdn',
+                    batch_size=128,
+                    epochs=Epoche,
+                    rdnSize=rdnSize,
+                    global_epoche=GlobalEpoche,
+                    PreProcess=PrePorcess,
+                    verbose=1,
+                    savePath=Model+'_'+DataSetName)
 
     kerasObj.SaveWeight("TrainResult/", DataSetName+"_train_"+Model)
 

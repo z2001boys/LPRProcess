@@ -3,9 +3,58 @@ import numpy
 import cv2
 
 
-dllPath = 'C:\\Users\\xinyo\\OneDrive\\Coder\\CudaComMat\\x64\\Release\\CudaMain.dll'
+dllPath = 'D:\\HyperInspection\\CudaMain.dll'
 #load dll
 CudaComHandle = None
+
+def buildCell(img,cellSize):
+    cells = []
+    imgSize = numpy.asarray(img.shape,dtype=float)
+    cellNum = numpy.ceil(imgSize/cellSize).astype(numpy.int)
+    imgSize = imgSize.astype(numpy.int)
+    for i in range(cellNum[0]):
+        row = []
+        for j in range(cellNum[1]):
+            acell = numpy.zeros((1,10))
+            for m in range(i*cellSize,min(imgSize[0],(i+1)*cellSize)):
+                tmpC = img[m,j*cellSize:min(imgSize[1],(j+1)*cellSize)]
+                h = numpy.bincount(tmpC,minlength=10)
+                acell = acell+h
+            row.append(acell)
+        cells.append(row)
+                
+               
+    return cells,cellNum
+
+def make_blocks(block_size, cells,cellNum):
+    block = []
+    for i in range(cellNum[0]-block_size+1):
+        for j in range(cellNum[0]-block_size+1):
+            single = numpy.zeros((1,10))
+            for m in range(i,min(cellNum[0],i+block_size)):
+                for n in range(j,min(cellNum[1],j+block_size)):
+                    single += cells[m][n]
+            block.append(single)
+                
+    return block
+
+def normalize_L2_Hys(block, threshold):
+    epsilon = 0.00001
+    norm = numpy.sqrt(numpy.sum(numpy.power(block,2),axis=2) + epsilon)
+
+    block_aux = numpy.divide(block,norm)
+    block_aux[block_aux > threshold] = threshold
+
+    norm = numpy.sqrt(numpy.sum(numpy.power(block_aux,2),axis=2) + epsilon)
+    
+    return norm
+    
+
+def buildHist(img,cellSize=10,blockSize=2):
+    cells,cellNum = buildCell(img,cellSize)
+    block = make_blocks(blockSize,cells,cellNum)
+    block = normalize_L2_Hys(block,0.3)
+    return block.flatten()
 
 class CudaMat:
     '''def __init__(self):
@@ -74,7 +123,7 @@ class CudaMat:
 
             return firstSelectMap,maxSelectMap
         elif Flatten == True:
-            FeatureMap = numpy.ndarray((sp[0],sp[1],2),dtype=numpy.uint8)
+            FeatureMap = numpy.ndarray((sp[0],sp[1],3),dtype=numpy.uint8)
             func = CudaComHandle.CreateILBPFlatten
             func.argtypes = [ctypes.c_void_p,ctypes.c_void_p]
             func(self.ILBP_,

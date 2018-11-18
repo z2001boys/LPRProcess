@@ -197,7 +197,7 @@ class DataObj:
 
         imgChannel = ImgInfo.Channel
         if PreProcess =="ILBPNet":
-            imgChannel = 16
+            imgChannel = 3
 
         # create return mat
         if ImgInfo.NeedFlatten:
@@ -227,7 +227,8 @@ class DataObj:
 
             if PreProcess == "ILBPNet":
                 gpuMat = CuMat.CudaMat(img=img)
-                img = gpuMat.CreateILBPNet().astype(np.float)
+                #img = gpuMat.CreateILBPNet().astype(np.float)
+                img = gpuMat.CreateILBP(Flatten=True).astype(np.float)
 
 
             if len(NewImgData.shape) == 4 and len(img.shape) == 2:
@@ -246,6 +247,8 @@ class DataObj:
 
         if kerasLabel == True:
             labels,_ = self.ToIntLable(curLabel,FinalTarget="ArrayExtend")
+        else:
+            labels,_ = self.ToIntLable(curLabel)
         
 
 
@@ -439,7 +442,7 @@ class DataObj:
 
         # 如果不需要擴展成矩陣則直接回傳，回傳內容為[0 1 2 3 4...]
         if FinalTarget=="":
-            return intLable, dataSize
+            return np.asarray(intLable), dataSize
 
         if FinalTarget == "ArrayExtend":
             # 如果需要擴展成矩陣則為下，擴展內容為 lable0 = [1 0 0 0...]

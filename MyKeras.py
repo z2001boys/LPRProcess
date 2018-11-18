@@ -17,8 +17,22 @@ from tensorflow.keras.models import Sequential,Model
 from tensorflow.keras.layers import Dense, Dropout, Flatten,Input,AveragePooling2D,concatenate
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 from ILBPLayer import MyLayer
 import pickle
+#
+from sklearn import svm
+from skimage.feature import hog
+from sklearn import svm
+#
+import progressbar
+
+def tryCreateDir(dir):
+        try:
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+        except Exception as e:
+            pass
 
 class KerasObj:
     def __init__(self, _ImageSize=[100, 100], _ImageChannel=1, _ImageFlatten=False):
@@ -72,6 +86,8 @@ class KerasObj:
         _savePath = LabelImage.PathCheck(_savePath)
         self.KerasMdl.save_weights(_savePath+_weightName+"_weight.h5")
 
+
+
     def BenchMark(self,imgObj,PreProcess = '',divideSize = 1000):
 
         listSize = imgObj.GetListSize()
@@ -84,16 +100,57 @@ class KerasObj:
             img,label = imgObj.RadomLoad(self.ImageInfo,PickSize=len(pickIdx), Dim=4 , PreProcess = PreProcess,randIdx = pickIdx,kerasLabel=True)
 
             p = self.KerasMdl.evaluate(img,label)
-            Y_pred = self.KerasMdl.predict(img)
-            y_classes = Y_pred.argmax(axis=-1)
-            for j in range(label.shape()):
-                print(y_classes[j])
 
             
             print('current:' ,p)
             correct = p[1]+correct
             loss = loss+p[0]
         return correct/DoTimes,loss/DoTimes
+
+    def TrainBySvm(self, imgObj, SelectMethod='all',rdnSize = -1 ,
+        global_epoche = 1,
+        PreProcess = '',
+        batch_size=32, epochs=1, verbose=0,valitationSplit = 0.0,
+        savePath = ''):
+
+        #若RDN==-1則使用全部的影像
+        if rdnSize == -1:
+            rdnSize = imgObj.GetListSize()
+
+        for i in range(global_epoche):
+            print("Start Training")
+            print("==Total layer : ", len(self.KerasMdl.layers))
+            print("==Global Epoche : ", i)
+            print("Prepare data...-")
+            imageData,label = imgObj.RadomLoad(self.ImageInfo,PickSize=rdnSize, Dim=4 , PreProcess = "HOG",kerasLabel=False)
+
+
+            imgNum = imageData.shape[0]
+            xtrain = np.zeros((4356,imgNum))
+            bar = progressbar.ProgressBar(maxval=100, widgets=[progressbar.Bar(
+            '=', '[', ']'), ' ', progressbar.Percentage()])
+            bar.start()
+            for j in range(imgNum):
+                xtrain[:,j] = hog(imageData[j,:,:,:],cells_per_block=(2,2),block_norm='L2-Hys')
+                bar.update(j*100/imgNum)
+            bar.finish()
+
+            infoName = savePath+'_'+str(epochs)+'_'+str(i)
+
+            clf = svm.SVC(gamma='auto',verbose=1)
+
+            clf.fit(xtrain.reshape(-1,4356),label.reshape(-1,1))
+            predict = clf.predict(xtrain.reshape(-1,4356))
+
+            accCount = 0
+            for j in range(imgNum):
+                if( predict[j] == label[j] ):
+                    accCount += 1
+            print(accCount/imgNum)
+                
+
+
+        
 
     def Train(self, imgObj, SelectMethod='all',rdnSize = -1 ,
         global_epoche = 1,
@@ -111,17 +168,27 @@ class KerasObj:
             print("==Global Epoche : ", i)
             print("Prepare data...-")
             imageData,label = imgObj.RadomLoad(self.ImageInfo,PickSize=rdnSize, Dim=4 , PreProcess = PreProcess)
+
+            infoName = savePath+'_'+str(epochs)+'_'+str(i)
                 
+            tryCreateDir("D:\\TBData\\"+infoName)
+            tbCallBack = tf.keras.callbacks.TensorBoard(log_dir="D:\\TBData\\"+infoName, histogram_freq=0, write_graph=True, write_images=True)
         
+            
+
             singleResult = self.KerasMdl.fit(imageData,label,
                 batch_size = batch_size,
                 epochs=epochs,
                 verbose=verbose,
-                validation_split=self.ValidateSplit )
+                validation_split=self.ValidateSplit,
+                callbacks=[tbCallBack] )
 
             if savePath != '':
-                with open('TrainHistory\\'+savePath+'_'+str(epochs)+'_'+str(i), 'wb') as file_pi:
+                with open('TrainHistory\\'+infoName, 'wb') as file_pi:
                     pickle.dump(singleResult.history, file_pi)
+
+            if i == 0:
+                epochs = int(epochs/4)
             
             gc.collect()#clear previous image data
 

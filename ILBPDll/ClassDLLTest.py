@@ -5,10 +5,13 @@ import matplotlib.pyplot as plt
 import math
 import CommonMath
 import time
+import Noiser
 
 TimeTest = False
 
-img1 = cv2.imread('D:\\test3.jpg', 0)
+img1 = cv2.imread('D:\\TestImg\\test7.jpg', 0)
+img1 = cv2.resize(img1,(100,100))
+#img1 = Noiser.noisy("s&p",img1)
 # c1 = CudaComMat.CudaMat(ReadPath='D:\\3d\\Calib0827\\0\\cam0.png')
 c1 = CudaComMat.CudaMat(img=img1)
 c1.Upload()

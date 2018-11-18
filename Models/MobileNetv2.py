@@ -1,7 +1,6 @@
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense, Activation, BatchNormalization, ReLU
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D, ZeroPadding2D
-from ILBPLayer import MyLayer
 from CNN_Module import make_divisible, inverted_res_block,correct_pad
 def GetMdl( inputShape ,ClassNum ):
 

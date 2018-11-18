@@ -656,7 +656,7 @@ def correct_pad(input, kernel_size):
 # expansion(t): 6~10
 # width multiplier: 0.35~1.4
 # depth multiplier: 96~224
-def inverted_res_block(t, strides, alpha, filters, is_expansion=True):
+def inverted_res_block(t, strides, alpha, filters, is_expansion=True,act = ReLU):
     def f(input):
         in_channels = K.int_shape(input)[-1]
         pointwise_conv_filters = int(filters*alpha)
@@ -675,7 +675,7 @@ def inverted_res_block(t, strides, alpha, filters, is_expansion=True):
                             padding='same' if strides == (1, 1) else 'valid',
                             use_bias=False)(x)
         x = BatchNormalization()(x)
-        x = ReLU(6.)(x)
+        x = act(6.)(x)
 
         x = Conv2D(pointwise_filters, kernel_size=(1, 1), padding='same')(x)
         x = BatchNormalization()(x)
@@ -1164,7 +1164,7 @@ def shuffle_unit_v2(inputs, out_channels, bottleneck_ratio,strides=2,stage=1,blo
         inputs = c
 
     x = Conv2D(bottleneck_channels, kernel_size=(1,1), strides=1, padding='same', name='%s/1x1conv_1' % prefix)(inputs)
-    x = BatchNormalization(axis=bn_axis, name='%s/bn_1x1conv_1' % prefix)(x)
+    x = BatchNormalization(axis=bn_axis, name='%sR/bn_1x1conv_1' % prefix)(x)
     x = Activation('relu', name='%s/relu_1x1conv_1' % prefix)(x)
     x = DepthwiseConv2D(kernel_size=(3,3), strides=strides, padding='same', use_bias=False,name='%s/3x3dwconv' % prefix)(x)
     x = BatchNormalization(axis=bn_axis, name='%s/bn_3x3dwconv' % prefix)(x)
