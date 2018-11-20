@@ -26,10 +26,9 @@ testNet = []
 testSet = []
 
 
-testNet = "ResNet50"
+testNet = "MobileNetv2"
 
-testSet.append("SHVT")
-
+testSet.append("IIIT5K")
 
 accData = dict()
 lossData =dict()

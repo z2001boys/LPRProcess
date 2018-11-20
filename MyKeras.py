@@ -23,7 +23,7 @@ import pickle
 #
 from sklearn import svm
 from skimage.feature import hog
-from sklearn import svm
+from sklearn import svm,neighbors
 #
 import progressbar
 
@@ -40,6 +40,7 @@ class KerasObj:
         self.Layers = []
         self.labelDict = []
         self.LayerNum = 0
+        self.label = 'none'
         # define input data
         self.ImageInfo = IF.ImageInfoClass()
         self.ImageInfo.Size = _ImageSize
@@ -113,6 +114,9 @@ class KerasObj:
         batch_size=32, epochs=1, verbose=0,valitationSplit = 0.0,
         savePath = ''):
 
+        cellSize = 10
+        cellNum = 2
+
         #若RDN==-1則使用全部的影像
         if rdnSize == -1:
             rdnSize = imgObj.GetListSize()
@@ -122,31 +126,35 @@ class KerasObj:
             print("==Total layer : ", len(self.KerasMdl.layers))
             print("==Global Epoche : ", i)
             print("Prepare data...-")
-            imageData,label = imgObj.RadomLoad(self.ImageInfo,PickSize=rdnSize, Dim=4 , PreProcess = "HOG",kerasLabel=False)
+            imageData,label = imgObj.RadomLoad(self.ImageInfo,PickSize=rdnSize, Dim=4 , PreProcess = "ILBPNet",kerasLabel=False)
 
 
-            imgNum = imageData.shape[0]
-            xtrain = np.zeros((4356,imgNum))
-            bar = progressbar.ProgressBar(maxval=100, widgets=[progressbar.Bar(
-            '=', '[', ']'), ' ', progressbar.Percentage()])
-            bar.start()
-            for j in range(imgNum):
-                xtrain[:,j] = hog(imageData[j,:,:,:],cells_per_block=(2,2),block_norm='L2-Hys')
-                bar.update(j*100/imgNum)
-            bar.finish()
+            trainInHOG = imgObj.BuildLBP(imageData,cellSize=cellSize,cellNum=cellNum)
+            infoName = savePath+'_'+str(epochs)+'_'+str(i)            
 
-            infoName = savePath+'_'+str(epochs)+'_'+str(i)
+            clf = svm.SVC(verbose=1)
 
-            clf = svm.SVC(gamma='auto',verbose=1)
+            clf.fit(trainInHOG,label)
+            predict = clf.predict(trainInHOG)
+            
+            testImg = LabelImage.DataObj()            
+            testImg.LoadList("D:\\DataSet\\IIIT5K\\testList.txt",
+                SortedClass=imgObj.MappedClass)
+            
+            tt,testLabel = testImg.RadomLoad(self.ImageInfo,PickSize=-1, Dim=4 , PreProcess = "ILBPNet",kerasLabel=False)
+            testHOG = testImg.BuildLBP( tt,cellSize=cellSize,cellNum=cellNum )
 
-            clf.fit(xtrain.reshape(-1,4356),label.reshape(-1,1))
-            predict = clf.predict(xtrain.reshape(-1,4356))
+            tpredict = clf.predict(testHOG)
+            testNum = tpredict.shape[0]
+        
+            accCount = np.count_nonzero(predict == label)
+            testAccCount = np.count_nonzero(tpredict == testLabel)
 
-            accCount = 0
-            for j in range(imgNum):
-                if( predict[j] == label[j] ):
-                    accCount += 1
-            print(accCount/imgNum)
+            for j in range(testNum):
+                if tpredict[j] != testLabel[j]:
+                    cv2.imwrite("D:\\tmp\\errImg\\"+str(j)+"_"+testImg.MappedClass[testLabel[j]]+"_to_"+testImg.MappedClass[tpredict[j]]+'.jpg', tt[j,:,:,2].reshape(100,100))
+
+            print(testAccCount/testNum)
                 
 
 

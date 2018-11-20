@@ -29,7 +29,8 @@ from tensorflow.keras.optimizers import SGD
 def SetTrain(DataSetName,Model,
     batchSize = 128,
     GlobalEpoche=10,Epoche=10,rdnSize = 2000,
-    skLearn = False):
+    skLearn = False,
+    label = 'none'):
 
     PrePorcess = ''
 
@@ -38,6 +39,8 @@ def SetTrain(DataSetName,Model,
     imgObj.Rotation
     testImgObj = LabelImage.DataObj()
     kerasObj = MyKeras.KerasObj()
+
+    kerasObj.label = label
 
     kerasObj.ImageInfo.Size = [100, 100]
     kerasObj.ImageInfo.Channel = 1

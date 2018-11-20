@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 import numpy
 import gc
 import random
-
+from skimage.feature import hog
+import BlockBuilder
 
 def IsImage(s):
     if ("png" in s or "bmp" in s or "jpg" in s):
@@ -176,11 +177,63 @@ class DataObj:
     def GetListSize(self):
         return len(self.ImgList)
 
+    def BuildHOG(self,imgArr,cellSize=8,cellNum=3,oriNum=8):
+        imgNum = imgArr.shape[0]
+        singleFeature = hog(imgArr[0,:,:,:],
+            pixels_per_cell=(cellSize,cellSize),
+            cells_per_block=(cellNum,cellNum),
+            orientations=oriNum,
+            block_norm='L2-Hys',)
+        featureDim = singleFeature.shape[0]
+        hogData = np.zeros((imgNum,featureDim))
+        bar = progressbar.ProgressBar(maxval=100, widgets=[progressbar.Bar(
+            '=', '[', ']'), ' ', progressbar.Percentage()])
+        bar.start()
+        for j in range(imgNum):
+            hogData[j,:] = hog(imgArr[j,:,:,:],
+                pixels_per_cell=(cellSize,cellSize),
+                cells_per_block=(cellNum,cellNum),
+                orientations=oriNum,
+                block_norm='L2-Hys')
+            bar.update(j*100/imgNum)
+        bar.finish()
+        gc.collect()
+        return hogData
+
+    def BuildLBP(self,imgArr,cellSize=8,cellNum=3):
+        
+        imgNum = imgArr.shape[0]
+        singleFeature = BlockBuilder.buildHist(imgArr[0,:,:,0],
+            cellSize = cellSize,
+            blockSize=cellNum)
+        featureDim = singleFeature.shape[0]
+        hogData = np.zeros((imgNum,featureDim*2))
+        bar = progressbar.ProgressBar(maxval=100, widgets=[progressbar.Bar(
+            '=', '[', ']'), ' ', progressbar.Percentage()])
+        bar.start()
+        for j in range(imgNum):
+            hogData[j,0:featureDim] = BlockBuilder.buildHist(imgArr[j,:,:,0],
+            cellSize = cellSize,
+            blockSize=cellNum,
+            clip=0.3)
+            bar.update(j*100/imgNum)
+            hogData[j,featureDim:2*featureDim] = BlockBuilder.buildHist(imgArr[j,:,:,1],
+            cellSize = cellSize,
+            blockSize=cellNum,
+            clip=0.4)
+            bar.update(j*100/imgNum)
+        bar.finish()
+        gc.collect()
+        return hogData
+
+    def BuildConcatanceFeature(self):
 
     def RadomLoad(self, ImgInfo , type='numpy', Dim=3,PreProcess = 'none',PickSize = 1000,randIdx=[],kerasLabel = True):
         
         # basic info
         totalSize = len(self.ImgList)
+        if PickSize == -1:
+            PickSize = len(self.ImgList)
         imgNum = min(len(self.ImgList),PickSize)
         FlattenSize = ImgInfo.Size[0] * ImgInfo.Size[1] * ImgInfo.Channel
         print("Preprocessing images...")
@@ -442,7 +495,7 @@ class DataObj:
 
         # 如果不需要擴展成矩陣則直接回傳，回傳內容為[0 1 2 3 4...]
         if FinalTarget=="":
-            return np.asarray(intLable), dataSize
+            return intLable, dataSize
 
         if FinalTarget == "ArrayExtend":
             # 如果需要擴展成矩陣則為下，擴展內容為 lable0 = [1 0 0 0...]
