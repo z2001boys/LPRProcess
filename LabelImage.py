@@ -177,7 +177,7 @@ class DataObj:
     def GetListSize(self):
         return len(self.ImgList)
 
-    def BuildHOG(self,imgArr,cellSize=8,cellNum=3,oriNum=8):
+    def BuildHOG(self,imgArr,cellSize=8,cellNum=3,oriNum=10):
         imgNum = imgArr.shape[0]
         singleFeature = hog(imgArr[0,:,:,:],
             pixels_per_cell=(cellSize,cellSize),
@@ -200,35 +200,49 @@ class DataObj:
         gc.collect()
         return hogData
 
+    def SetSize(self):
+        return len(self.ImgList)
+
+
     def BuildLBP(self,imgArr,cellSize=8,cellNum=3):
         
         imgNum = imgArr.shape[0]
-        singleFeature = BlockBuilder.buildHist(imgArr[0,:,:,0],
-            cellSize = cellSize,
-            blockSize=cellNum)
-        featureDim = singleFeature.shape[0]
-        hogData = np.zeros((imgNum,featureDim*2))
+        firstFeaure = BlockBuilder.buildHist(imgArr[0,:,:,0],
+            cellSize = 10,
+            blockSize=2)
+        maxFeature = BlockBuilder.buildHist(imgArr[0,:,:,0],
+            cellSize = 20,
+            blockSize=3)
+        featureDim1 = firstFeaure.shape[0]
+        featureDim2 = maxFeature.shape[0]
+        hogData = np.zeros((imgNum,featureDim1+featureDim2))
+        print('----------Start to generate feature-----------------')
+        print('feature num1:',featureDim1)
+        print('feature num2:',featureDim2)
         bar = progressbar.ProgressBar(maxval=100, widgets=[progressbar.Bar(
             '=', '[', ']'), ' ', progressbar.Percentage()])
         bar.start()
         for j in range(imgNum):
-            hogData[j,0:featureDim] = BlockBuilder.buildHist(imgArr[j,:,:,0],
-            cellSize = cellSize,
-            blockSize=cellNum,
+            hogData[j,0:featureDim1] = BlockBuilder.buildHist(imgArr[j,:,:,0],
+            cellSize = 10,
+            blockSize=2,
             clip=0.3)
             bar.update(j*100/imgNum)
-            hogData[j,featureDim:2*featureDim] = BlockBuilder.buildHist(imgArr[j,:,:,1],
-            cellSize = cellSize,
-            blockSize=cellNum,
+            hogData[j,featureDim1:featureDim1+featureDim2] = BlockBuilder.buildHist(imgArr[j,:,:,1],
+            cellSize = 20,
+            blockSize=3,
             clip=0.4)
             bar.update(j*100/imgNum)
         bar.finish()
         gc.collect()
         return hogData
 
-    def BuildConcatanceFeature(self):
+    
 
-    def RadomLoad(self, ImgInfo , type='numpy', Dim=3,PreProcess = 'none',PickSize = 1000,randIdx=[],kerasLabel = True):
+    def RadomLoad(self, ImgInfo , type='numpy', Dim=3,PreProcess = 'none',PickSize = 1000,randIdx=[],
+        kerasLabel = True,
+        SeqLoad = False,
+        featurePlaceHolder = 0 ):
         
         # basic info
         totalSize = len(self.ImgList)
@@ -242,20 +256,32 @@ class DataObj:
         print("==Target Image Flatten : ", ImgInfo.NeedFlatten)
 
         if randIdx==[]:
-            randIdx = random.sample(range(totalSize), min(totalSize,imgNum))
+            print("==No specific index select by LBImg, Radom Loading = ",SeqLoad)
+            if SeqLoad == True:                
+                randIdx = numpy.arange(0,min(totalSize,imgNum),1)
+            else:                
+                randIdx = random.sample(range(totalSize), min(totalSize,imgNum))
 
         bar = progressbar.ProgressBar(maxval=100, widgets=[progressbar.Bar(
             '=', '[', ']'), ' ', progressbar.Percentage()])
         bar.start()
 
+        FlattenSize = ImgInfo.Size[0]*ImgInfo.Size[1]
+
         imgChannel = ImgInfo.Channel
         if PreProcess =="ILBPNet":
             imgChannel = 3
+        if PreProcess == "ILBPNet+":
+            ImgInfo.NeedFlatten = True
+            virImg = numpy.zeros([ImgInfo.Size[0],ImgInfo.Size[1]])
+            flbpSize = BlockBuilder.buildHist(virImg,cellSize=10,blockSize=2).shape[0]
+            mlbpSize = BlockBuilder.buildHist(virImg,cellSize=15,blockSize=3).shape[0]
+            FlattenSize = 10000 + flbpSize+mlbpSize
 
         # create return mat
         if ImgInfo.NeedFlatten:
             NewImgData = np.zeros(
-                [imgNum, ImgInfo.Size[0]*ImgInfo.Size[1]])
+                [imgNum, FlattenSize])
         else:
             NewImgData = np.zeros(
                 [imgNum, ImgInfo.Size[0], ImgInfo.Size[1], imgChannel], dtype=np.float)
@@ -271,32 +297,52 @@ class DataObj:
 
             f = numpy.float
 
-            if PreProcess == "ILBPNet":
-                f = numpy.uint8
+            if PreProcess == "FeatureUnion":
+                feature = self.BuildLBP(img)
+                NewImgData[i, featurePlaceHolder:featurePlaceHolder+FlattenSize] = feature
+                bar.update(i*100/imgNum)
+            if PreProcess == "ILBPNet+":
+                img = ToTargetImageFormat(
+                    img, ImgInfo, FlattenSize=-1, Format = f,Rotation=self.Rotation)
+                gpuMat = gpuMat = CuMat.CudaMat(img=img.reshape(100,100))
+                ilbpImg = gpuMat.CreateILBP(Flatten=True).astype(np.float)
+                NewImgData[i, 0:10000] = img[:]
+                flbp = BlockBuilder.buildHist(ilbpImg[:,:,0],cellSize=10,blockSize=2)
+                mlbp = BlockBuilder.buildHist(ilbpImg[:,:,1],cellSize=15,blockSize=3)
+                NewImgData[i,10000:10000+flbpSize] = flbp
+                NewImgData[i,10000+flbpSize:10000+flbpSize+mlbpSize] = mlbp
+                bar.update(i*100/imgNum)
+            else:
+                if PreProcess == "ILBPNet":
+                    f = numpy.uint8
 
-            img = ToTargetImageFormat(
-                img, ImgInfo, FlattenSize=FlattenSize, Format = f,Rotation=self.Rotation)
+                img = ToTargetImageFormat(
+                    img, ImgInfo, FlattenSize=-1, Format = f,Rotation=self.Rotation)
+            
+
+                if PreProcess == "ILBPNet":
+                    gpuMat = CuMat.CudaMat(img=img)
+                    #img = gpuMat.CreateILBPNet().astype(np.float)
+                    img = gpuMat.CreateILBP(Flatten=True).astype(np.float)
 
 
-            if PreProcess == "ILBPNet":
-                gpuMat = CuMat.CudaMat(img=img)
-                #img = gpuMat.CreateILBPNet().astype(np.float)
-                img = gpuMat.CreateILBP(Flatten=True).astype(np.float)
+                if len(NewImgData.shape) == 4 and len(img.shape) == 2:
+                    img = img[:, :, np.newaxis]
 
+                if i%1000 == 0:
+                    gc.collect()
 
-            if len(NewImgData.shape) == 4 and len(img.shape) == 2:
-                img = img[:, :, np.newaxis]
-
-            if i%1000 == 0:
-                gc.collect()
-
-            NewImgData[i, :] = img
-            bar.update(i*100/imgNum)
+                NewImgData[i, :] = img
+                bar.update(i*100/imgNum)
 
         # 檢查是否為四軸
         if Dim == 4 and len(NewImgData.shape) == 3:
             NewImgData = NewImgData[:, :, :, np.newaxis]
+        if Dim == 3 and len(NewImgData.shape) == 2:
+            NewImgData = NewImgData[:, : , np.newaxis]
         bar.finish()
+
+        gc.collect()
 
         if kerasLabel == True:
             labels,_ = self.ToIntLable(curLabel,FinalTarget="ArrayExtend")

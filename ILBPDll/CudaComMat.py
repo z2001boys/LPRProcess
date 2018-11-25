@@ -59,8 +59,7 @@ class CudaMat:
     def CreateILBP(self,Flatten = False):
         if self.OnDevice == False:
             self.Upload()
-        
-
+                    
         sp = self.ownMat.shape
 
         if Flatten == False:

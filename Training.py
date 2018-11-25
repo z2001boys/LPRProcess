@@ -18,6 +18,7 @@ from Models import DenseNet169
 from Models import DarkNet53
 from Models import ResNet50
 from Models import ILBPNetv2
+from Models import ILBPNetv3
 from Models import ShuffleNetv2
 """keras import"""
 from tensorflow.keras.models import Sequential
@@ -30,14 +31,13 @@ def SetTrain(DataSetName,Model,
     batchSize = 128,
     GlobalEpoche=10,Epoche=10,rdnSize = 2000,
     skLearn = False,
+    KerasLoadModel = '',
+    FeatureUnion = False,
     label = 'none'):
-
-    PrePorcess = ''
+        
 
     # create object
     imgObj = LabelImage.DataObj()
-    imgObj.Rotation
-    testImgObj = LabelImage.DataObj()
     kerasObj = MyKeras.KerasObj()
 
     kerasObj.label = label
@@ -53,18 +53,23 @@ def SetTrain(DataSetName,Model,
 
 
     channerSize = 1
-    if Model=="ILBPNet":
-        PrePorcess = "ILBPNet"
+    if "ILBPNet" in Model:
+        PrePorcess = Model
         channerSize = 3
+        
 
     # 設定模組
     kerasObj.NewSeq()
-    if Model != "ILBPNet":
-        exec('kerasObj.KerasMdl = '+Model+'.GetMdl((100, 100, channerSize),len(SortedClass))' )
+
+    if KerasLoadModel=='':
+        KerasLoadModel = Model
+
+    if "ILBPNet" not in KerasLoadModel:
+        exec('kerasObj.KerasMdl = '+KerasLoadModel+'.GetMdl((100, 100, channerSize),len(SortedClass))' )
+    elif "+" in KerasLoadModel:
+        kerasObj.KerasMdl = ILBPNetv3.GetMdl((10000+3240+2250,1),len(SortedClass))#ILBP
     else:
         kerasObj.KerasMdl = ILBPNetv2.GetMdl((100, 100, channerSize),len(SortedClass))#ILBP
-
-    kerasObj.KerasMdl.summary()
 
     
     kerasObj.KerasMdl.compile(optimizer='adam',
@@ -82,7 +87,7 @@ def SetTrain(DataSetName,Model,
     
     kerasObj.ValidateSplit = 0.1
 
-    if GlobalEpoche == -1:
+    if GlobalEpoche == -1 and rdnSize!=-1:
         imgSize = len(imgObj.ImgList)
         GlobalEpoche = math.ceil( imgSize/rdnSize )
 

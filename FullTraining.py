@@ -26,15 +26,18 @@ testNet = []
 testSet = []
 
 
-testNet = "MobileNetv2"
+testNet = "ILBPNet+"
 
-testSet.append("IIIT5K")
+testSet.append("ICDAR03")
 
 accData = dict()
 lossData =dict()
 
 for t in testSet:        
-    Training.SetTrain(t,testNet,GlobalEpoche= -1,rdnSize=10000,Epoche=200,batchSize=32,skLearn=True)
+    Training.SetTrain(t,testNet,
+        GlobalEpoche= 1,rdnSize=-1,Epoche=200,batchSize=32,
+        skLearn=False,KerasLoadModel='',
+        FeatureUnion = True)
     acc,loss = Bench.Test(testNet,BenchData=t)
     accData[t] = acc
     lossData[t] = loss

@@ -17,6 +17,7 @@ from tensorflow.keras.models import Sequential,Model
 from tensorflow.keras.layers import Dense, Dropout, Flatten,Input,AveragePooling2D,concatenate
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 from ILBPLayer import MyLayer
 import pickle
@@ -87,7 +88,11 @@ class KerasObj:
         _savePath = LabelImage.PathCheck(_savePath)
         self.KerasMdl.save_weights(_savePath+_weightName+"_weight.h5")
 
-
+    def ExtractFeature(self,imgObj):
+        lastModel = Model( input = self.KerasMdl.input, output = self.KerasMdl.get_layer('global_average_pooling2d').output  )
+        img,label = imgObj.RadomLoad(self.ImageInfo,PickSize=-1 , PreProcess = '',SeqLoad = True)
+        f = lastModel.predict(img)
+        return f
 
     def BenchMark(self,imgObj,PreProcess = '',divideSize = 1000):
 
@@ -114,8 +119,10 @@ class KerasObj:
         batch_size=32, epochs=1, verbose=0,valitationSplit = 0.0,
         savePath = ''):
 
-        cellSize = 10
+        cellSize = 15
         cellNum = 2
+
+        PreProcess = "ILBPNet"
 
         #若RDN==-1則使用全部的影像
         if rdnSize == -1:
@@ -126,38 +133,45 @@ class KerasObj:
             print("==Total layer : ", len(self.KerasMdl.layers))
             print("==Global Epoche : ", i)
             print("Prepare data...-")
-            imageData,label = imgObj.RadomLoad(self.ImageInfo,PickSize=rdnSize, Dim=4 , PreProcess = "ILBPNet",kerasLabel=False)
+            imageData,label = imgObj.RadomLoad(self.ImageInfo,
+                PickSize=rdnSize, 
+                Dim=4 , 
+                PreProcess = "none",
+                kerasLabel=False,                
+                SeqLoad=True)
 
 
             trainInHOG = imgObj.BuildLBP(imageData,cellSize=cellSize,cellNum=cellNum)
             infoName = savePath+'_'+str(epochs)+'_'+str(i)            
 
-            clf = svm.SVC(verbose=1)
+            #learning svm
+            print("SVM Learning")
+            clf = svm.LinearSVC(verbose=0)
 
             clf.fit(trainInHOG,label)
             predict = clf.predict(trainInHOG)
+            accCount = np.count_nonzero(predict == label)
+            print("-----------------acc on training sample",accCount/imgObj.SetSize())
             
             testImg = LabelImage.DataObj()            
-            testImg.LoadList("D:\\DataSet\\IIIT5K\\testList.txt",
+            testImg.LoadList("D:\\DataSet\\ICDAR03\\testList.txt",
                 SortedClass=imgObj.MappedClass)
             
-            tt,testLabel = testImg.RadomLoad(self.ImageInfo,PickSize=-1, Dim=4 , PreProcess = "ILBPNet",kerasLabel=False)
+            tt,testLabel = testImg.RadomLoad(self.ImageInfo,PickSize=-1, Dim=4 , PreProcess = PreProcess,kerasLabel=False)
             testHOG = testImg.BuildLBP( tt,cellSize=cellSize,cellNum=cellNum )
 
             tpredict = clf.predict(testHOG)
             testNum = tpredict.shape[0]
-        
-            accCount = np.count_nonzero(predict == label)
+                    
             testAccCount = np.count_nonzero(tpredict == testLabel)
+            print("testSet:",testAccCount/testNum)
+                
 
             for j in range(testNum):
                 if tpredict[j] != testLabel[j]:
-                    cv2.imwrite("D:\\tmp\\errImg\\"+str(j)+"_"+testImg.MappedClass[testLabel[j]]+"_to_"+testImg.MappedClass[tpredict[j]]+'.jpg', tt[j,:,:,2].reshape(100,100))
+                    cv2.imwrite("D:\\tmp\\errImg\\"+str(j)+"_"+testImg.MappedClass[testLabel[j]]+"_to_"+testImg.MappedClass[tpredict[j]]+'.jpg', tt[j,:,:,0].reshape(100,100))
 
-            print(testAccCount/testNum)
-                
-
-
+            
         
 
     def Train(self, imgObj, SelectMethod='all',rdnSize = -1 ,
@@ -175,21 +189,23 @@ class KerasObj:
             print("==Total layer : ", len(self.KerasMdl.layers))
             print("==Global Epoche : ", i)
             print("Prepare data...-")
-            imageData,label = imgObj.RadomLoad(self.ImageInfo,PickSize=rdnSize, Dim=4 , PreProcess = PreProcess)
+            imageData,label = imgObj.RadomLoad(self.ImageInfo,PickSize=rdnSize, Dim=3 , PreProcess = PreProcess,featurePlaceHolder = 1000 )
+        
 
             infoName = savePath+'_'+str(epochs)+'_'+str(i)
                 
             tryCreateDir("D:\\TBData\\"+infoName)
-            tbCallBack = tf.keras.callbacks.TensorBoard(log_dir="D:\\TBData\\"+infoName, histogram_freq=0, write_graph=True, write_images=True)
+            #tbCallBack = tf.keras.callbacks.TeorBoard(log_dir="D:\\TBData\\"+infoName, histogram_freq=0, write_graph=True, write_images=True)
         
             
+            early_stopping = EarlyStopping(monitor='val_acc', patience=50,verbose=2,mode='max',baseline=0.8)
 
             singleResult = self.KerasMdl.fit(imageData,label,
                 batch_size = batch_size,
                 epochs=epochs,
                 verbose=verbose,
-                validation_split=self.ValidateSplit,
-                callbacks=[tbCallBack] )
+                validation_split=self.ValidateSplit)
+                #callbacks=[tbCallBack,early_stopping] )
 
             if savePath != '':
                 with open('TrainHistory\\'+infoName, 'wb') as file_pi:
