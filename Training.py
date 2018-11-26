@@ -33,8 +33,7 @@ def SetTrain(DataSetName,Model,
     skLearn = False,
     KerasLoadModel = '',
     FeatureUnion = False,
-    label = 'none'):
-        
+    label = 'none'):        
 
     # create object
     imgObj = LabelImage.DataObj()

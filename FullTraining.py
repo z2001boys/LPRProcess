@@ -26,7 +26,7 @@ testNet = []
 testSet = []
 
 
-testNet = "ILBPNet+"
+testNet = "ILBPNet"
 
 testSet.append("ICDAR03")
 
