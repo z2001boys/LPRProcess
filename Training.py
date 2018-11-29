@@ -20,6 +20,7 @@ from Models import ResNet50
 from Models import ILBPNetv2
 from Models import ILBPNetv3
 from Models import ShuffleNetv2
+from Models import SqueezeNet
 """keras import"""
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
@@ -55,7 +56,8 @@ def SetTrain(DataSetName,Model,
     if "ILBPNet" in Model:
         PrePorcess = Model
         channerSize = 3
-        
+    else:
+        PrePorcess = Model
 
     # 設定模組
     kerasObj.NewSeq()
@@ -74,6 +76,8 @@ def SetTrain(DataSetName,Model,
     kerasObj.KerasMdl.compile(optimizer='adam',
                     loss='categorical_crossentropy',
                     metrics=['accuracy'])
+
+    print(kerasObj.KerasMdl.summary())
 
     # Load image
     if(os.name == 'nt'):

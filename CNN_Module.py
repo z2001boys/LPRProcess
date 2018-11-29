@@ -1,7 +1,7 @@
 import numpy as np
 
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense, Flatten, Activation, Dropout, Reshape, Lambda
+from tensorflow.keras.layers import Input, Dense, Flatten, Activation, Dropout, Reshape, Lambda,LeakyReLU
 from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, SeparableConv2D, Cropping2D 
 from tensorflow.keras.layers import MaxPooling2D, GlobalAveragePooling2D, GlobalMaxPooling2D, AveragePooling2D, ZeroPadding2D
 from tensorflow.keras import backend as K
@@ -1227,3 +1227,42 @@ def ShuffleNetv2(scale_factor=1.0, pooling='max', input_shape=(100,100,1), num_s
 
     model = Model(inputs=img_input, outputs=x, name=name)
     return model
+
+# SqueezeNet module
+def fire_module(sqz_filter=16, expand_filter=64):
+    def f(x):
+        x = Conv2D(sqz_filter, (1, 1), padding='same')(x)
+        x = LeakyReLU(0.3)(x)
+
+        x1 = Conv2D(expand_filter, (1, 1), padding='same')(x)
+        x1 = Activation('relu')(x1)
+
+        x2 = Conv2D(expand_filter, (3, 3), padding='same')(x)
+        x2 = Activation('relu')(x2)
+
+        x = concatenate([x1, x2])
+        return x
+    return f
+
+def fire_module_ext(sqz_filter=16, expand_filter=64):
+    def f(x,f,m):
+        x = Conv2D(sqz_filter, (1, 1), padding='same')(x)
+        x = LeakyReLU(0.3)(x)
+
+        x = concatenate([x,f,m],axis=3)
+
+        x = BatchNormalization()(x)
+
+        x1 = Conv2D(expand_filter, (1, 1), padding='same')(x)
+        x1 = Activation('relu')(x1)
+
+        x2 = Conv2D(expand_filter, (3, 3), padding='same')(x)
+        x2 = Activation('relu')(x2)
+
+        x = concatenate([x1, x2])
+        return x
+    return f
+def unBalanceModel( dir=0 ,sqz_filter = 16, expand_filter=64):
+    def f(x):
+        return f    
+    return f

@@ -15,6 +15,7 @@ from Models import DarkNet53
 from Models import ResNet50
 from Models import ILBPNetv2
 from Models import ShuffleNetv2
+from Models import SqueezeNet
 """keras import"""
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten

@@ -5,6 +5,7 @@ __pycache__/CreateImagePatches.cpython-36.pyc
 __pycache__/CommonStruct.cpython-36.pyc
 __pycache__/CommonMath.cpython-36.pyc
 __pycache__/CNN_Module.cpython-36.pyc
+TrainHistory/
 .vscode/settings.json
 .vscode/.ropeproject/config.py
 ILBPDll/__pycache__/ILBPClass.cpython-36.pyc
