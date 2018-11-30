@@ -27,7 +27,7 @@ def LimitNet(img,flbp,mlbp):
 
     #second combine module
     f_mx_2 = Conv2D(1, (3, 3), activation='relu', strides=(2, 2))(f_mx_1)
-    f_mx_1_2 = Conv2D(2, (3, 3), activation='relu', strides=(2, 2))(f_mx_1)
+    f_mx_1_2 = Conv2D(1, (3, 3), activation='relu', strides=(2, 2))(f_mx_1)
     mix = fire_module_ext(sqz_filter=32, expand_filter=128)(maxpool4,f_mx_2,f_mx_1_2)
     
 

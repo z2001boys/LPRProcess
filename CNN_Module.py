@@ -1234,10 +1234,10 @@ def fire_module(sqz_filter=16, expand_filter=64):
         x = Conv2D(sqz_filter, (1, 1), padding='same')(x)
         x = LeakyReLU(0.3)(x)
 
-        x1 = Conv2D(expand_filter, (1, 1), padding='same')(x)
+        x1 = Conv2D(expand_filter, (3, 1), padding='same')(x)
         x1 = Activation('relu')(x1)
 
-        x2 = Conv2D(expand_filter, (3, 3), padding='same')(x)
+        x2 = Conv2D(expand_filter, (1, 3), padding='same')(x)
         x2 = Activation('relu')(x2)
 
         x = concatenate([x1, x2])
@@ -1253,10 +1253,10 @@ def fire_module_ext(sqz_filter=16, expand_filter=64):
 
         x = BatchNormalization()(x)
 
-        x1 = Conv2D(expand_filter, (1, 1), padding='same')(x)
+        x1 = Conv2D(expand_filter, (1, 3), padding='same')(x)
         x1 = Activation('relu')(x1)
 
-        x2 = Conv2D(expand_filter, (3, 3), padding='same')(x)
+        x2 = Conv2D(expand_filter, (3, 1), padding='same')(x)
         x2 = Activation('relu')(x2)
 
         x = concatenate([x1, x2])
@@ -1264,5 +1264,7 @@ def fire_module_ext(sqz_filter=16, expand_filter=64):
     return f
 def unBalanceModel( dir=0 ,sqz_filter = 16, expand_filter=64):
     def f(x):
+        f = Conv2D(sqz_filter)
+
         return f    
     return f
