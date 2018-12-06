@@ -13,6 +13,8 @@ import numpy
 import gc
 import random
 from skimage.feature import hog
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import array_to_img, img_to_array, load_img
 import BlockBuilder
 
 def IsImage(s):
@@ -203,6 +205,51 @@ class DataObj:
     def SetSize(self):
         return len(self.ImgList)
 
+    def GenAugData(self,imgInfo,times=10,PickSize = 1000,PreProcess=''):
+
+
+        dataGen = ImageDataGenerator(
+                rotation_range=15,
+                width_shift_range=0.2,
+                height_shift_range=0.2,                
+            )
+        count = 0;
+
+        listPath = 'D:\\temp\\tmpList.txt'
+
+        print('data aug...')
+        bar = progressbar.ProgressBar(maxval=100, widgets=[progressbar.Bar(
+            '=', '[', ']'), ' ', progressbar.Percentage()])
+        bar.start()
+        with open(listPath,'w') as f:
+            for i in range(len(self.ImgList)):
+                path = self.ImgList[i]
+                l = self.Label[i]
+                img = cv2.imread(path)
+                imgSize = img.shape
+                chExt = False
+                if len(imgSize)==3:
+                    chExt = True
+                if chExt == True:
+                    data = dataGen.flow(img.reshape(-1,imgSize[0],imgSize[1],3),numpy.ones(1),batch_size=1)
+                else:    
+                    data = dataGen.flow(img.reshape(-1,imgSize[0],imgSize[1],1),numpy.ones(1),batch_size=1)
+                for j,newImgs in enumerate(data):                
+                    fileName = 'D:\\temp\\tmpImg\\'+str(count)+'.png';                    
+                    cv2.imwrite(fileName,newImgs[0][0,:,:,:])                    
+                    f.write(fileName+','+str(l)+'\n')        
+                    count = count +1 
+                    if j >= times:
+                        break
+                bar.update(i*100/len(self.ImgList))
+        bar.finish()
+
+        tmpObj = DataObj()
+        tmpObj.LoadList(listPath,SortedClass=self.MappedClass)        
+        imgOjb = tmpObj.RadomLoad(imgInfo,PickSize=-1,PreProcess=PreProcess)
+
+        gc.collect()
+        return imgOjb
 
     def BuildLBP(self,imgArr,cellSize=8,cellNum=3):
         
@@ -242,8 +289,12 @@ class DataObj:
     def RadomLoad(self, ImgInfo , type='numpy', Dim=3,PreProcess = 'none',PickSize = 1000,randIdx=[],
         kerasLabel = True,
         SeqLoad = False,
-        featurePlaceHolder = 0 ):
-        
+        featurePlaceHolder = 0,
+        dataAug = False ):
+
+        if( dataAug==True ):
+            return self.GenAugData(times=10,imgInfo=ImgInfo,PickSize=PickSize,PreProcess=PreProcess)
+
         # basic info
         totalSize = len(self.ImgList)
         if PickSize == -1:

@@ -34,7 +34,8 @@ def SetTrain(DataSetName,Model,
     skLearn = False,
     KerasLoadModel = '',
     FeatureUnion = False,
-    label = 'none'):        
+    label = 'none',
+    dataAug = False):
 
     # create object
     imgObj = LabelImage.DataObj()
@@ -87,6 +88,7 @@ def SetTrain(DataSetName,Model,
     else:
         imgObj.LoadList("DatasetList/TrainingList.txt",
                             SortedClass=SortedClass)
+
     
     kerasObj.ValidateSplit = 0.1
 
@@ -107,13 +109,14 @@ def SetTrain(DataSetName,Model,
     else:
         kerasObj.Train(imgObj,
                     SelectMethod='rdn',
-                    batch_size=128,
+                    batch_size=batchSize,
                     epochs=Epoche,
                     rdnSize=rdnSize,
                     global_epoche=GlobalEpoche,
                     PreProcess=PrePorcess,
                     verbose=1,
-                    savePath=Model+'_'+DataSetName)
+                    savePath=Model+'_'+DataSetName,
+                    dataAug = dataAug)
 
     kerasObj.SaveWeight("TrainResult/", DataSetName+"_train_"+Model)
 

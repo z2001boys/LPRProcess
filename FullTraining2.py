@@ -24,10 +24,10 @@ testNet = []
 testSet = []
 
 
-testNet = "ILBPNet"
+testNet = "Inceptionv3"
 
-testSet.append("SHVT")
-#testSet.append("CIFAR-100")
+#testSet.append("")
+testSet.append("CHARS74K_15")
 
 
 accData = dict()
@@ -37,7 +37,8 @@ for t in testSet:
     Training.SetTrain(t,testNet,
         GlobalEpoche= 1,rdnSize=-1,Epoche=200,batchSize=128,
         skLearn=False,KerasLoadModel='',
-        FeatureUnion = True)
+        FeatureUnion = True,
+        dataAug=True)
     acc,loss = Bench.Test(testNet,BenchData=t)
     accData[t] = acc
     lossData[t] = loss

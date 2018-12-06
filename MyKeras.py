@@ -105,7 +105,8 @@ class KerasObj:
             pickIdx = list(range(i*divideSize,min((i+1)*divideSize,listSize)))
             img,label = imgObj.RadomLoad(self.ImageInfo,PickSize=len(pickIdx), Dim=4 , PreProcess = PreProcess,randIdx = pickIdx,kerasLabel=True)
 
-            p = self.KerasMdl.evaluate(img,label)
+            p = self.KerasMdl.evaluate(img,label)            
+            #l = self.KerasMdl.predict(img[0:10,:,:,:])
 
             
             print('current:' ,p)
@@ -178,7 +179,8 @@ class KerasObj:
         global_epoche = 1,
         PreProcess = '',
         batch_size=32, epochs=1, verbose=0,valitationSplit = 0.0,
-        savePath = ''):
+        savePath = '',
+        dataAug = False):
 
         #若RDN==-1則使用全部的影像
         if rdnSize == -1:
@@ -189,7 +191,7 @@ class KerasObj:
             print("==Total layer : ", len(self.KerasMdl.layers))
             print("==Global Epoche : ", i)
             print("Prepare data...-")
-            imageData,label = imgObj.RadomLoad(self.ImageInfo,PickSize=rdnSize, Dim=3 , PreProcess = PreProcess,featurePlaceHolder = 1000 )
+            imageData,label = imgObj.RadomLoad(self.ImageInfo,PickSize=rdnSize, Dim=3 , PreProcess = PreProcess,dataAug=dataAug)
         
 
             infoName = savePath+'_'+str(epochs)+'_'+str(i)
@@ -198,14 +200,14 @@ class KerasObj:
             #tbCallBack = tf.keras.callbacks.TeorBoard(log_dir="D:\\TBData\\"+infoName, histogram_freq=0, write_graph=True, write_images=True)
         
             
-            early_stopping = EarlyStopping(monitor='val_acc', patience=50,verbose=2,mode='max',baseline=0.8)
+            early_stopping = EarlyStopping(monitor='val_acc', patience=50,verbose=2,mode='max',baseline=0.9)
 
             singleResult = self.KerasMdl.fit(imageData,label,
                 batch_size = batch_size,
                 epochs=epochs,
                 verbose=verbose,
-                validation_split=self.ValidateSplit)
-                #callbacks=[tbCallBack,early_stopping] )
+                validation_split=self.ValidateSplit,
+                callbacks=[] )
 
             if savePath != '':
                 with open('TrainHistory\\'+infoName, 'wb') as file_pi:

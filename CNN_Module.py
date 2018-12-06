@@ -1232,12 +1232,12 @@ def ShuffleNetv2(scale_factor=1.0, pooling='max', input_shape=(100,100,1), num_s
 def fire_module(sqz_filter=16, expand_filter=64):
     def f(x):
         x = Conv2D(sqz_filter, (1, 1), padding='same')(x)
-        x = LeakyReLU(0.3)(x)
+        x = ReLU()(x)
 
-        x1 = Conv2D(expand_filter, (3, 1), padding='same')(x)
+        x1 = Conv2D(expand_filter, (1, 1), padding='same')(x)
         x1 = Activation('relu')(x1)
 
-        x2 = Conv2D(expand_filter, (1, 3), padding='same')(x)
+        x2 = Conv2D(expand_filter, (3, 3), padding='same')(x)
         x2 = Activation('relu')(x2)
 
         x = concatenate([x1, x2])
@@ -1246,20 +1246,19 @@ def fire_module(sqz_filter=16, expand_filter=64):
 
 def fire_module_ext(sqz_filter=16, expand_filter=64):
     def f(x,f,m):
+        x = concatenate([x,f,m],axis=3)
         x = Conv2D(sqz_filter, (1, 1), padding='same')(x)
         x = LeakyReLU(0.3)(x)
 
-        x = concatenate([x,f,m],axis=3)
-
         x = BatchNormalization()(x)
 
-        x1 = Conv2D(expand_filter, (1, 3), padding='same')(x)
+        x1 = Conv2D(expand_filter, (3, 3), padding='same')(x)
         x1 = Activation('relu')(x1)
 
-        x2 = Conv2D(expand_filter, (3, 1), padding='same')(x)
-        x2 = Activation('relu')(x2)
+        #x1 = Conv2D(expand_filter, (3, 1), padding='same')(x1)
+        #x1 = Activation('relu')(x1)
 
-        x = concatenate([x1, x2])
+        x = concatenate([x, x1])
         return x
     return f
 def unBalanceModel( dir=0 ,sqz_filter = 16, expand_filter=64):
